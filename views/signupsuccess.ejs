@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<script	src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+	<title><%= title %></title>
+	<head>
+	<style>
+	
+	div.logo {
+    position: fixed;
+    top: 0;
+    left: 550px;
+}
+
+div.column {
+    position: fixed;
+    top: 120px;
+    left: 430px;
+    width: 2000px;   
+}
+	
+	</style>
+	   <meta charset="utf-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+ 
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    
+     
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    
+    <script src="angularjs/user.js"></script>
+    
+  </head>
+  <body ng-app="user" ng-controller="signin">
+   
+   <div class="logo"> 
+ 		<img src="https://pbs.twimg.com/profile_images/698397813672058881/vpt3vjf3.jpg" width="180px" height="165px">
+ 	</div>
+ 	
+ 	
+ 	<div class="column">
+    	<div class="col-md-4 ">
+        	<div class="col-md-8 well" style="background-color: white;">
+				<div class="welcome" style="margin: 10px;"> 
+					<p style="color:#009900; font-size: 24px"><span class="glyphicon glyphicon-ok-sign" style="color:#009900; font-size: 40px"></span>
+					Welcome to eBay, <%= firstname %>!</p>
+				</div>
+				
+				<div class="uname" style="margin: 10px;">
+					We've created a unique username for you: <b><%= username %></b>
+				</div>
+				
+				<div class="col-md-12" style="margin: 0px;">
+					<button type="button" style="height: 35px;" class="btn btn-primary btn-block" ng-click="btn_uname_contd()">Continue</button>
+				</div>
+				
+				
+        	</div>
+        </div>
+   </div>     	
+  </body>
+</html>

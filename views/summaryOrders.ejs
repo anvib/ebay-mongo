@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<script	src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+	<title><%- title %> </title>
+	<head>
+	
+	 <style>
+  	div.logo {
+    position: fixed;
+    top: 50px;
+    left: 30px;
+}
+  </style>
+  
+  <script>
+function openBuy() {
+    var list = document.getElementById("buylist");
+
+    if (list.style.display == "none"){
+        list.style.display = "block";
+    }else{
+        list.style.display = "none";
+    }
+}
+
+function openSell() {
+    var list = document.getElementById("selllist");
+
+    if (list.style.display == "none"){
+        list.style.display = "block";
+    }else{
+        list.style.display = "none";
+    }
+}
+
+function openList() {
+    var list = document.getElementById("listslist");
+
+    if (list.style.display == "none"){
+        list.style.display = "block";
+    }else{
+        list.style.display = "none";
+    }
+}
+</script>
+  
+	  <meta charset="utf-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+	
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+   
+   <script src="angularjs/user.js"></script>
+  </head>
+  
+<body ng-app="user" ng-controller="cart" style="background-color:#f5f5f5;">
+
+<div class="row" style="margin: 10px;">
+	<div class="btn-group">
+		<div class="btn-group">
+  			<button type="button" class="btn btn-default">Hi <b><%- user%></b>!</button>
+ 			<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+   				<span class="caret"></span>
+  			</button>
+  			<ul class="dropdown-menu" role="menu">
+	    		<li><a href="#">Account Settings</a></li>
+	    		<li><a href="/logout">Sign Out</a></li>
+  			</ul>
+		</div> <!-- button group 1 -->
+		<button type="button"class="btn btn-default" onclick="window.location.href='/sell'">Sell</button>
+ 	</div><!-- button group 2 -->
+
+	
+		<div class="btn-group pull-right" style="width:150px">
+			<button type="button"class="btn btn-default" onclick="window.location.href='/summary'">My eBay</button>
+			<button type="button"class="btn btn-default" onclick="window.location.href='/cart'">
+			
+			<span class="glyphicon glyphicon-shopping-cart" style="color:  #FFFFF; font-size: 15px"><span class="badge" style="color: #ffffff; background-color: #e69500; font-size: 10px"><%- cart%></span></span>
+			
+			</button>
+		
+		</div><!-- button group pull right -->
+
+</div><!-- row -->
+
+<div class="container" style="margin=10px;"> 
+	<img src="http://localhost:3000/images/logo.jpg" width="130px" height="50px">
+	<button type="button"class="btn btn-default" onclick="window.location.href='/allproducts'">Shop</button>
+	<input type="text" name="search" placeholder="Search..." maxlength="50" size="100" style="padding: 5px;">
+	<button type="button" style="height: 35px;" class="btn btn-primary"><b>Search</b></button>
+</div>
+
+<br><br>
+
+<div class="container">
+	<img src="http://localhost:3000/images/summary-ad.jpg" alt="My_Logo">
+</div>
+
+<br><br>
+<div class="container">
+	<p style="color:  #FFFFF; font-size: 22px">My eBay: Bids/Offers</p>
+</div>
+
+<div class="container">
+	<div class="col-md-2">
+	<div class="row">
+			<b>Purchase History</b>
+		</div>	
+		<div class="row">
+			<b>Buy</b>
+			<button type="button" onclick = "openBuy()" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+				<span class="caret"></span>
+			</button>
+  		</div> <!-- row -->
+		<ul id="buylist">
+		  <li><a href = "/summaryBids">Bids</a></li>
+		  <li><a href = "/summaryOrders">Orders</a></li> 
+		</ul>	
+		
+		<div class="row">
+			<b>Sell</b>
+			<button type="button" onclick = "openSell()" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+				<span class="caret"></span>
+			</button>
+  		</div> <!-- row -->
+  		
+  		<ul id="selllist">
+		  <li><a href = "/summarySold">Sold</a></li>
+		  <li><a href = "/summaryActive">Active</a></li> 
+		</ul>	
+		
+		<div class="row">
+			<b>Searches you follow</b>
+		</div>	
+		
+		<div class="row">
+			<b>Lists</b>
+			<button type="button" onclick = "openList()" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+				<span class="caret"></span>
+			</button>
+  		</div> <!-- row -->
+  		
+  		<ul id="listslist">
+		  <li><a href = "#">All lists</a></li>
+		  <li><a href = "#">Watch list</a></li>
+		  <li><a href = "#">Watch list</a></li>
+		  <li><a href = "#">Wish list</a></li>
+		  <li><a href = "#">Your list</a></li> 
+		</ul>	
+		
+		<div class="row">
+			<b>Sellers your follow</b>
+		</div>	
+			
+	</div>	<!-- div col md 2 -->
+	
+	<div class="col-md-10">
+		<% if(display=='0'){ %>
+		<div class="row well">
+			You have not placed any orders yet. Shop <a href="/allproducts">here</a>.
+		</div>
+
+		<% } else { %>	
+
+		<% for(i in orders) { %>
+			<div class="row well">
+				<div class="col-md-4">
+			    	<img src="<%= orders[i].image %> " style="width:150px;height:150px" />
+			    </div><!-- col md 4 -->
+			    
+			     <div class="col-md-8">
+			     	<div class="row">
+							<div class="col-md-4">
+								Item Type:	
+							</div>
+							<div class="col-md-8">
+								<%- orders[i].item_type %>
+							</div>
+					</div>
+					<br>
+						<div class="row">
+							<div class="col-md-4">
+								Item Description:	
+							</div>
+							<div class="col-md-8">
+								<%- orders[i].description %>
+							</div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="col-md-4">
+								Price:	
+							</div>
+							<div class="col-md-8">
+								<%- orders[i].price %>
+							</div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="col-md-4">
+								Quantity:	
+							</div>
+							<div class="col-md-8">
+								<%- orders[i].quantity %>
+							</div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="col-md-4">
+								Order date:	
+							</div>
+							<div class="col-md-8">
+								<%- orders[i].orderdate %>
+							</div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="col-md-4">
+								Bid/Fixed buy:	
+							</div>
+							<div class="col-md-8">
+								<% if(orders[i].bid=='1'){ %>
+									Item bought in bidding
+								<% } else { %> 	
+									Item bought on fixed price
+								<% } %> 
+							</div>
+						</div>
+						<br>
+						
+						<div class="row">
+							<div class="col-md-4">
+								Seller:	
+							</div>
+							<div class="col-md-8">
+								<%- orders[i].seller_username %>
+							</div>
+						</div>
+			     
+			     </div> <!-- col 8 -->
+		    </div> <!-- row well -->
+			
+		<% } %>   <! -- for loop -->
+
+		<% } %>   <! -- else for more than 0 items -->
+	
+	</div><!-- div col md 6 -->
+	
+</div> <!-- container -->
+
+</body>
+</html>

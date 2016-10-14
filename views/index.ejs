@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html class="full" lang="en">
+<script	src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+  <head>
+  <style>
+  	div.logo {
+    position: fixed;
+    top: 0;
+    left: 700px;
+}
+  </style>
+	<title><%= title %></title>
+  <meta charset="utf-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+ 
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    
+     
+    <link href="stylesheets/bootstrap.min.css" rel="stylesheet">
+    <link href="/stylesheets/full.css" rel="stylesheet">
+    
+    <link class="cssdeck" rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.1/css/bootstrap.min.css">
+
+	 <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+ 
+ 	<script src="angularjs/user.js"></script>
+ 
+  </head>
+  
+  <body ng-app="user">
+ 
+ <div class="logo" style="margin=10px;"> 
+ 		<img src="https://pbs.twimg.com/profile_images/698397813672058881/vpt3vjf3.jpg" width="160px" height="145px">
+ 	</div>
+ 
+ 		<div class="main">
+ 			<div class="col-md-12">
+ 				<div class="well">
+ 					<ul class="nav nav-tabs nav-justified">
+  						<li class="active"><a data-toggle="tab" href="#signin" style="font-size: 18px"><span class="glyphicon glyphicon-circle-arrow-right" style="color:	#C0C0C0; font-size: 25px"></span>Sign in</a></li>
+    					<li><a data-toggle="tab" href="#register" style="font-size: 18px"><span class="glyphicon glyphicon-plus-sign" style="color:  #C0C0C0; font-size: 25px"></span>Register</a></li>
+  					</ul>
+  					
+  					 <div id="my-tab-content" class="tab-content">
+  						<div class="tab-pane fade in active" id="signin">
+  							<form ng-controller="signin">
+  							
+  							
+  								<div class="col-md-12" style="margin: 10px;">
+  									<div ng-show="login" style="color:red"><span class="glyphicon glyphicon-exclamation-sign" style="color:red"></span> Oops, thats not a match</div>
+									<input type="text" style="font-size:12pt; height: 35px;" id="username" name="username" class="form-control input-lg" placeholder="Email or username" ng-model="username">
+								</div>
+								
+	
+								<div class="col-md-12" style="margin: 10px;">
+									<input type="password" style="font-size:12pt; height: 35px;" id="password" name="password" class="form-control input-lg" placeholder="Password" ng-model="password">
+								</div>
+  							
+  								<div class="col-md-12" style="margin: 10px;">
+									<button type="button" style="height: 35px;" class="btn btn-primary btn-block" ng-click="btn_signin()">Sign in</button>
+								</div>
+  							
+  							</form>
+  						</div>
+  						
+  						
+  						<div class="tab-pane fade" id="register">
+  							<form ng-controller="signup">
+							<br>
+							<div class="row">
+								<div class="col-md-12">
+									<input type="email" style="font-size:12pt; height: 35px;" id="email" name="email" class="form-control input-lg" placeholder="Email" ng-model="email">	
+								</div>
+							</div>
+							
+							<div class="row">
+								<div class="col-md-12">
+									<input type="email" style="font-size:12pt; height: 35px;" id="email2" name="email2" class="form-control input-lg" placeholder="Reenter email" ng-model="email2">	
+									<div ng-show="emailmatch" style="color:red">Looks like these email addresses don’t match.</div>
+								</div>
+							</div>
+							
+							<ng-form name="passwordForm">
+							<div class="row">	
+								<div class="col-md-12">
+										<input type="password" style="font-size:12pt; height: 35px;" id="password" name="password" class="form-control input-lg" placeholder="Password" ng-pattern="/^[A-Za-z]{1}[a-zA-Z0-9!@#$-_]{5,10}$/" ng-model="password">
+										<span ng-show="passwordForm.password.$error.pattern" style="color:red">1. Use 6 to 64 characters.<br>2. Besides letters, include at least a number or symbol.<br>3. Password is case sensitive.<br>4. Avoid using the same password for multiple sites.</span>
+										<div ng-show="enterpass" style="color:red">Please enter your password.</div>
+								</div>
+							</div>
+							</ng-form>
+							
+							<div class="row">
+								<div class="col-md-6">
+									<input type="text" class="form-control ng-pristine ng-untouched ng-valid" style="font-size:12pt; height: 35px;" id="firstname" name="firstname" placeholder="Firstname" ng-model="firstname">
+								</div>
+
+								<div class="col-md-6">
+									<input type="text" class="form-control ng-pristine ng-untouched ng-valid" style="font-size:12pt; height: 35px;" id="lastname" name="lastname" placeholder="Lastname" ng-model="lastname">
+								</div>
+							</div>	
+							
+							<div class="row">
+								<div class="col-md-12">
+									<input type="tel" style="font-size:12pt; height: 35px;" id="mobile" name="mobile" class="form-control input-lg" placeholder="Mobile Phone" ng-model="mobile">
+								</div>
+							</div>
+							
+							<div class="row">		
+								<div class="col-md-12">
+									<button type="button" style="height: 35px;" class="btn btn-primary btn-block" ng-click="btn_signup()">Register</button>
+								</div>
+							</div>	
+							
+							<div class="col-md-12 ">
+                                <small style="font-size: 12px; font-family: 'Helvetica neue',Helvetica,Arial,sans-serif; color:black ">
+									By <b>Registering</b>, you agree that you've read and accepted our <a title="link opens in new window " href="http://pages.ebay.com/help/policies/user-agreement.html " target="_blank
+                                    "><u>User Agreement</u></a>, you're at least 18 years old, and you consent to our <a href="http://pages.ebay.com/help/policies/privacy-policy.html " target="_blank "><u>Privacy Notice</u></a> and receiving marketing communications from us.
+								</small>
+                            </div>
+										
+  							</form>
+  							
+  						</div>
+  				
+  								
+  					</div>
+ 				</div>
+ 			</div>	
+ 	<div>
+ 
+  </body>
+  </html>

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<script	src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+	<title><%- title %> </title>
+	<head>
+		<meta charset="utf-8"> 
+  		<meta name="viewport" content="width=device-width, initial-scale=1">
+	
+	    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+	    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	   
+	   <script src="angularjs/user.js"></script>
+  
+	</head>
+
+<body ng-app="user" ng-controller="cart" style="background-color:#f5f5f5;">
+
+<div class="row" style="margin: 10px;">
+	<div class="btn-group">
+		<div class="btn-group">
+  			<button type="button" class="btn btn-default">Hi <b><%- firstname%></b>!</button>
+ 			<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+   				<span class="caret"></span>
+  			</button>
+  			<ul class="dropdown-menu" role="menu">
+	    		<li><a href="#">Account Settings</a></li>
+	    		<li><a href="/logout">Sign Out</a></li>
+  			</ul>
+		</div> <!-- button group 1 -->
+		<button type="button"class="btn btn-default" onclick="window.location.href='/sell'">Sell</button>
+ 	</div><!-- button group 2 -->
+
+	
+		<div class="btn-group pull-right" style="width:150px">
+			<button type="button"class="btn btn-default" onclick="window.location.href='/summary'">My eBay</button>
+			<button type="button"class="btn btn-default" onclick="window.location.href='/cart'">
+			
+			<span class="glyphicon glyphicon-shopping-cart" style="color:  #FFFFF; font-size: 15px"><span class="badge" style="color: #ffffff; background-color: #e69500; font-size: 10px"><%- cart%></span></span>
+			
+			</button>
+		
+		</div><!-- button group pull right -->
+
+</div><!-- row -->
+
+<!-- back to homepage button -->
+<div class="row" style="margin: 10px;">
+	<a href="/allproducts">Back to search results </a>
+</div>
+
+<% if(item.bid=='1'){ %>
+	<% if(item.bid_status=='1'){ %>
+		<div class="alert alert-warning">
+			<strong>Bidding has ended on this item. </strong>
+		</div>
+	<% } %>
+<% } %> 
+
+<div class="container" style="margin: 10px;">
+	<div class="col-md-3" style="background-color: #f5f5f5; ">
+		<img src="<%= item.image %> " style="width:350px;height:350px; background-color:#f5f5f5;" />
+	</div>
+	
+	<div class="col-md-6" style="background-color:#f5f5f5">
+		
+		<!-- description -->
+		<div class="row col-md-offset-1"><font size="5"><b> <%- item.description %> </b></font></div>
+		<div class="container">
+		<% if(item.bid=='1'){ %>
+			<% if(item.bid_status=='1'){ %>
+				<div class="row">
+					<div class="col-md-2">
+						Item Condition:	
+					</div>
+					<div class="col-md-4">
+						<b><%- condition %></b>
+					</div>
+				</div>
+				
+			<br>
+			
+			<div class="row">
+				<div class="col-md-2">
+					Ended:	
+				</div>
+				<div class="col-md-4">
+					<b><%- item.bid_endtime %></b>
+				</div>
+			</div>
+			
+			<br>
+			
+			<div class="row">
+				<div class="col-md-2">
+					Starting Bid:	
+				</div>
+				<div class="col-md-4">
+					<b>US$<%- item.price %></b> [ <a ng-click="viewBids();"><%- bids %> bids</a> ]
+				</div>
+			</div>
+			
+			<br>
+			
+			<div class="row">
+				<div class="col-md-2">
+					Shipping:	
+				</div>
+				<div class="col-md-4">
+					<b>$4.99</b> Standard Shipping
+				</div>
+			</div>
+			
+			<br>
+			
+			<div class="row">
+				<div class="col-md-2">
+					Item Location:	
+				</div>
+				<div class="col-md-4">
+					San Jose, California, United States
+				</div>
+			</div>
+			
+			<br>
+			
+			<div class="row">
+				<div class="col-md-2">
+					Seller:	
+				</div>
+				<div class="col-md-4">
+					<b><font size="2" color="blue"><%- item.seller_username %></font></b>
+				</div>
+			</div>
+			
+			
+		<% } else if(item.bid_status=='0'){ %> 
+				
+				<div class="row">
+					<div class="col-md-2">
+						<font style="font-family: Helvetica neue;">Item Condition:	</font>
+					</div>
+					<div class="col-md-4">
+						<b><%- condition %></b>
+					</div>
+				</div>
+				
+				<br>
+				
+				<div class="row">
+					<div class="col-md-2">
+						Time left:	
+					</div>
+					<div class="col-md-4" style="color:red">
+						<b><%- days %> days : <%- hours %> hours</b> 
+					</div>
+				</div>
+			
+				<div class="col-md-6" style="background-color: #e6e6e6; ">
+					<br>
+					<div class="col-md-6">
+						<font size= "2"><font color="#737373">Starting Bid: </font><b>US $<%- item.price %></b></font>
+						<br><br>
+						<font size= "2"><font color="#737373">Max Bid: </font><b>US $<%- maxBid %></b></font>
+					</div>
+					
+					
+					<div class="col-md-6">
+						<div class="row">
+							<font size= "2">[ <a ng-click="viewBids();"><%- bids %> bids</a> ]</font>
+						</div>
+					<br>
+						<div class="row">
+							<button type="button" style="height: 35px;" data-toggle="modal" data-target="#bidModal" class="btn btn-primary"><b>Place bid</b></button>
+						</div>
+						
+						
+						<!-- Modal -->
+						
+						  <div class="modal fade" id="bidModal" role="dialog">
+    <div class="modal-dialog">
+    
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">US$ <%- maxBid %></h4>
+        </div>
+        <div class="modal-body">
+          <p><%- bids %> bids</p>
+        </div>
+        
+        <div class="modal-body">
+        <div ng-show="lowbid" style="color:red"><b><span class="glyphicon glyphicon-exclamation-sign" style="color:red"></span>You have to bid at least US $<%- maxBid+1 %></b></div>
+        <div ng-show="bidSuccess" style="color:green"><b><span class="glyphicon glyphicon-circle-arrow-right" style="color:green"></span>Bid placed successfully</b></div>
+		</div>
+        
+        <div class="modal-body">
+        Your Bid: <input type="text" size="4" ng-model="bidPrice" placeholder="US $">
+        <button type="button" style="height: 35px;" class="btn btn-primary" ng-click="addBid();">Bid</button>
+		</div>
+        
+        <div class="modal-footer">
+          <p align="left"><font size= "2">By placing a bid, you're committing to buy this item if you win.</font></p>
+          <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="closeModal();">Close</button>
+        </div>
+      </div>
+      
+    </div>
+  </div>  <!-- modal -->
+		<br>
+	<div class="row">	
+		<a><font size="2"><span class="glyphicon glyphicon-eye-open"></span>&emsp;Add to watch list</a>
+	</div>
+					
+	<div class="row">	
+		<a><font size="2"><span class="glyphicon glyphicon-star"></span>&emsp;Add to collection</a>
+	</div>	
+	
+	<br>				
+</div>
+		
+		<!--			<div class="col-md-5 well" style="background-color: #FFFFFF; text-align:center; left: 0px; bottom:20px; position:absolute;">
+					<b><font color="red">600 sold</font></b>
+				</div>	-->
+				
+				<div class="col-md-6 well" style="background-color: #FFFFFF; left:80px; bottom:-40px; position: relative;">
+					Experienced seller
+				</div>
+			
+	<!--			<div class="col-md-4 well" style="background-color: #FFFFFF; text-align:center; right:0px; bottom:20px; position: absolute;">
+					60-day returns
+				</div>	-->
+								
+</div>
+			
+				
+		<% } %> 				
+	<% } else{ %> 
+		<div class="row">
+			<div class="col-md-2 col-md-offset-1">
+				<font style="font-family: Helvetica neue;">Item Condition:	</font>
+			</div>
+			
+			<div class="col-md-3">
+				<b><%- condition %></b>
+			</div>
+		</div>
+		
+		<br>
+		
+		<div class="row">
+			<div class="col-md-2 col-md-offset-1">
+				<span ng-if="quantity > <%- item.quantity %>" class="animate-if">
+					<span class="glyphicon glyphicon-circle-arrow-right" style="color:red; font-size: 18px"></span>
+				</span>
+				
+				Quantity: <input type="text" ng-init="quantity='1'" size="2" ng-model="quantity" ng-init="quantity > 1">
+				<br><br>
+				
+				<div class="row">
+				<span ng-if="quantity > <%- item.quantity %>" class="animate-if">
+					<span style="color:red">Please enter a lower number</span>
+				</span>
+				</div>
+			</div> <!-- col-md-2 -->
+				
+			<div class="col-md-6">	
+				<%- item.quantity %> available
+				
+			</div>
+			
+		</div>	<!-- row -->
+	
+	
+	<div class="container">
+		<div class="col-md-6 well" style="background-color: #e6e6e6; ">
+		<div class="col-md-6">
+		<div class="row">
+			<div class="col-md-3">
+				<font size= "2"><font color="#808080">Was:	</font></font>
+			</div>
+			<div class="col-md-4">
+				<font size= "3"><b>US$ <%- Math.round(item.price*1.3) %></b></font>
+			</div>
+		</div>
+		
+			<br>
+			
+		<div class="row">
+			<div class="col-md-4">
+				<font size= "2"><font color="#808080">You save:	</font></font>
+			</div>
+			<div class="col-md-6">
+				<font size= "3"><b>33% </b></font>
+			</div>
+		</div>
+			
+			<br>
+			
+		<div class="row">
+			<div class="col-md-3">
+				<font size= "2"><font color="#808080">Price: </font></font>
+			</div>
+			<div class="col-md-6">
+				<font size= "3"><b>US $<%- item.price %></b></font>
+			</div>
+		</div>
+		</div>	
+		<div class="col-md-6">
+			<div class="row">
+				<button type="button" style="height: 35px;" class="btn btn-primary"><b>Buy it Now</b></button>
+			</div>
+			
+			<br>
+			
+			<div class="row">
+				<% if(displayCart=='0'){ %>
+					<font size= "2">Added to <a href="/cart">your cart</a></font>
+				<% } else{ %> 
+					<button type="button" style="height: 35px;" class="btn btn-primary" ng-click="addCart('<%- item.item_code %>');">Add to cart</button>
+				<% } %> 
+			</div>
+			
+		</div>	
+		</div> <!-- col-md-6 -->
+		
+		
+	</div> <!-- container -->	
+		
+			
+						
+	<% } %> 
+		
+	</div>	<!-- inner container -->
+			<div class="container col-md-offset-2">
+				<div class="col-md-1">
+					<font size="2"><font color="#737373">Shipping: </font>
+				</div>
+			
+				<div class="col-md-4">
+					$1.40 ePacket delivery from China | <a><font size="1" color="#737373"><u>See details</u></font></a></font>
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1" color="#737373">	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;See details about international shipping here.</font>
+				</div>	
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1" color="#737373"> &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Item location: Shanghai, China</font>
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1" color="#737373">	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Ships to: Americas, Europe, Asia, Australia <a><u><font size="1" color="#737373">See exclusions</font></u></a></font>
+				</div>
+			</div>
+			
+			<div class="container col-md-offset-2">
+				<div class="col-md-1">
+					<font size="2"><font color="#737373">Delivery: </font>
+				</div>
+				<div class="col-md-4">
+					Estimated between <b><font color="orange">Thu. Oct. 20 and Mon. Oct. 24</font></b></font>
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1" color="#737373">	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Please note the delivery estimate is <font color="orange"><b>greater than 7 business days.</b></font></font>
+				</div>
+			</div>
+			
+			<div class="container col-md-offset-2">
+				<div class="col-md-1">
+					<font size="2"><font color="#737373">Payments: </font>
+				</div>
+				<div class="col-md-4">
+					<img src="http://www.flybe.com/corporate/media/news/1406/paypal.png" style="width:70px;height:30px;"/><img src="http://www.libertyint.com/LibertyInternationalFinal/paymentoptions.center.png" style="width:150px;height:30px;"/>	
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1">	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Credit cards processed by PayPal</font>
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<img src="http://marketingroadmap.com/img/sales/paypal-credit-logo.png" style="width:120px;height:20px;"/>
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1">	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Get more time to pay. <a><font size="1" color="#737373"><u>Apply now</u></font></a> | <a><font size="1" color="#737373"><u>See Terms</u></font></a> 
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1">	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;<a><font size="1" color="#737373"><u>See Details</u></font></a> 
+				</div>
+			</div>
+			
+			<div class="container col-md-offset-2">
+				<div class="col-md-1">
+					<font size="2"><font color="#737373">Returns: </font>
+				</div>
+				<div class="col-md-4">
+					60 days money back or item exchange, buyer pays return shipping | <a><font size="1" color="#737373"><u>See Details</u></font></a></font>
+				</div>
+			</div>
+			
+			<div class="container col-md-offset-2">
+				<div class="col-md-1">
+					<font size="2" color="#737373">Guarantee: </font> 
+				</div>
+				<div class="col-md-4">
+					<img src="http://pics.ebaystatic.com/aw/pics/buy/mbg/landing/MBG-logo.png" style="width:120px;height:35px;"/> &emsp;&emsp;<b>|</b>&emsp;&emsp;<a><font size="1" color="#737373"><u>See Details</u></font></a>
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1">	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Get the item you ordered or get your money back.</font> 
+				</div>
+			</div>
+			
+			<div class="row col-md-offset-2">
+				<div class="col-md-12 col-md-offset-1">
+					<font size="1">	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Covers your purchase price and original shipping.</font> 
+				</div>
+			</div>
+			
+	
+	</div> <!-- col-md-6 -->
+	
+	<div class="col-md-2 well col-md-offset-1" style="background-color: #FFFFFF;">
+			<div class="row"><b><font size="3">Seller Information</font></b></div>
+			<div class="row"><b><font size="2" color="blue"><%- item.seller_username %></font></b></div>
+			<div class="row">Item Shipping from: <b><font color="blue"><%- item.seller_state %></font></b></div>
+			<div class="row"><font size="2">98.7% Positive feedback</font></div>
+			<div class="row">----------------------------------------</div>
+			<div class="row"><font size="2" color="green"><span class="glyphicon glyphicon-plus"></span>Follow this seller</font></div>
+			<br>
+			<div class="row">Visit Store: <a>www.ebay.com</a></div>
+			<div class="row"><a href="/homepage">See other items</a></div>
+		</div>
+	<div class="col-md-2 well col-md-offset-1" style="background-color: #FFFFFF;">
+			<div class="row"><font size="5" color="#8c8c8c">UP TO <font color="#404040">70% OFF</font></div>
+			<div class="row">AND FREE SHIPPING</font></div>
+			<div class="row"><font color="blue">Shop top brands</font></div> 
+			<br>
+			<img src="http://mamasonadime.com/wp-content/uploads/2012/11/ebay-deals.jpg" align="right" style="width:80px;height:50px;"/>
+		</div>
+</div> <!-- container -->
+
+</body>
+</html>	

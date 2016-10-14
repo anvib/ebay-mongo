@@ -1,0 +1,13 @@
+body {
+	margin-top: 50px;
+	margin-bottom: 50px;
+	background: none;
+}
+
+div.main {
+    position: fixed;
+    bottom: 0px;
+    right: 400px;
+    width: 500px;   
+}
+

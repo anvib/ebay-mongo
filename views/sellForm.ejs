@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<script	src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+<title><%= title %></title>
+  <head>
+  <meta charset="utf-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    
+    	<script src="angularjs/user.js"></script>
+  </head>
+  
+<body ng-app="user" ng-controller="sellForm" style="background-color:#f5f5f5;">
+ 	
+ 	<div class="logo" style="margin-left: 120px;"> 
+ 		<img src="https://pbs.twimg.com/profile_images/698397813672058881/vpt3vjf3.jpg" width="160px" height="145px">
+ 	</div>
+ 
+ 	<div class="col-md-1">
+ 	</div>
+ 
+	<div class="col-md-8 well" style="text-align:left; background-color: #FFFFFF;">
+		<div class="row">
+		<font size="4">Describe your item</font>
+	
+		<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+				<font size="3" color="orange">*</font><font size="3" color="#737373">Title:</font>
+			</div>
+			
+			<div class="col-md-8">
+				<input type="text" ng-model="item_type" size="80" id="title" name="title" placeholder="Title">
+			</div>
+		</div>
+		<br>
+		<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+				<font color="orange">*</font><font size="3" color="#737373">Condition:</font>
+			</div>
+			
+			<div class="col-md-8">
+				<select name="condition" id="condition"
+	      		ng-options="options.name for options in condition.options track by options.id"
+	      		ng-model="condition.selectedCondition"></select>
+			</div>
+		</div>
+		
+		<br>
+		
+		<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+				<font color="orange">*</font><font size="3" color="#737373">Price:</font>
+			</div>
+		
+			<div class="col-md-8">
+				<button type="button" class="btn btn-default" ng-model="priceType" ng-click="pricetype('auction');">Auction</button>
+				
+				<button type="button" class="btn btn-default" ng-model="priceType" ng-click="pricetype('fixed');">Fixed Price</button>
+			</div>
+		</div>
+			
+	<div ng-show="auction">
+		<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+					<font color="orange">*</font><font size="3" color="#737373">Starting Price:</font>
+			</div>
+			
+			<div class="col-md-8">
+					<input type="text" ng-model="auc_start_price" size="10" placeholder="$">
+					<br>
+					<font size="2"><b>Tip: </b>  Consider setting the starting price at the minimum you're comfortable with. Your item won't sell for less than this amount.</font>
+			</div>
+		</div>
+		
+		<br>
+		
+		<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+					<font color="orange">*</font><font size="3" color="#737373">Quantity:</font>
+			</div>
+			
+			<div class="col-md-8" align="left" style="margin: 10px;">
+					<font size="3">1</font>
+			</div>
+		</div>
+		<br>
+		<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+					<font color="orange">*</font><font size="3" color="#737373">Listing Duration:</font>
+			</div>
+			
+			<div class="col-md-8" align="left" style="margin: 10px;">
+					<font size="3">4 Days</font>
+			</div>
+		</div>
+		
+	</div> <!-- ng show for auction -->
+	
+	<div ng-show="fixed">
+		<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+					<font color="orange">*</font><font size="3" color="#737373">Price:</font>
+			</div>
+			
+			<div class="col-md-8">
+					<input type="text" ng-model="fixed_price" size="10" placeholder="$">
+			</div>
+		</div>
+		
+		<br>
+		
+		<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+					<font color="orange">*</font><font size="3" color="#737373">Quantity:</font>
+			</div>
+			
+			<div class="col-md-8">
+					<input type="text" ng-model="fixed_quantity" size="10" placeholder="1">
+			</div>
+		</div>
+	</div>  <!-- ng show for fixed -->
+	
+	<br>
+	
+	<div class="row">
+		<div class="col-md-2" align="left" style="margin: 10px;">
+			<font size="3" color="#737373">Seller:</font>
+		</div>
+		
+		<div class="col-md-8">
+			<font size="3" color="blue"><%- firstname %> (<font size="2"><%- username %></font>)</font>
+		</div>
+	</div>
+	
+	<br>	
+	
+	<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+				<font size="3" color="orange">*</font><font size="3" color="#737373">Shipping State:</font>
+			</div>
+			
+			<div class="col-md-8">
+				<input required type="text" ng-model="seller_state" id="state" name="state" size="2">
+			</div>
+		</div>
+		
+	<br>
+	
+	<div class="row">
+			<div class="col-md-2" align="left" style="margin: 10px;">
+				<font size="3" color="orange">*</font><font size="3" color="#737373">Details:</font>
+			</div>
+			
+			<div class="col-md-8">
+				<textarea required="string" ng-maxlength="100" ng-model="details" id="details" name="details"></textarea>
+			</div>
+		</div>
+	
+	<div class="col-md-12" style="margin: 10px;">
+		<button ng-click="btn_sellItem();">Submit</button>
+	</div>
+	
+		
+
+</div>
+  </body>
+</html>

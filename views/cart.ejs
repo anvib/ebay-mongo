@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<script	src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+	<title>Welcome </title>
+	<head>
+	  <meta charset="utf-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+	
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+   
+   <script src="angularjs/user.js"></script>
+   
+   <script>
+	function change(data) {
+    var list = document.getElementById(data);
+
+    if (list.style.display == "block"){
+        list.style.display = "none";
+    }else{
+        list.style.display = "block";
+    }
+}
+</script>
+   
+   
+  </head>
+
+<body ng-app="user" ng-controller="cart">
+
+<div class="row" style="margin: 10px;">
+	<div class="btn-group">
+		<div class="btn-group">
+  			<button type="button" class="btn btn-default">Hi <b><%- user%></b>!</button>
+ 			<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+   				<span class="caret"></span>
+  			</button>
+  			<ul class="dropdown-menu" role="menu">
+	    		<li><a href="#">Account Settings</a></li>
+	    		<li><a href="/logout">Sign Out</a></li>
+  			</ul>
+		</div> <!-- button group 1 -->
+		<button type="button"class="btn btn-default" onclick="window.location.href='/sell'">Sell</button>
+ 	</div><!-- button group 2 -->
+	Last sign in <%- lastlogin %>
+	
+	
+	
+		<div class="btn-group pull-right" style="width:150px">
+			<button type="button"class="btn btn-default" onclick="window.location.href='/summary'">My eBay</button>
+			<button type="button"class="btn btn-default" onclick="window.location.href='/cart'">
+			
+			<span class="glyphicon glyphicon-shopping-cart" style="color:  #FFFFF; font-size: 15px"><span class="badge" style="color: #ffffff; background-color: #e69500; font-size: 10px"><%- cart%></span></span>
+			
+			</button>
+		
+		</div><!-- button group pull right -->
+
+</div><!-- row -->
+
+<div class="container" style="margin=10px;"> 
+	<img src="http://localhost:3000/images/logo.jpg" width="130px" height="50px">
+	<button type="button"class="btn btn-default" onclick="window.location.href='/allproducts'">Shop</button>
+	<input type="text" name="search" placeholder="Search..." maxlength="50" size="100" style="padding: 5px;">
+	<button type="button" style="height: 35px;" class="btn btn-primary"><b>Search</b></button>
+</div>
+
+<p style="color:  #FFFFF; font-size: 22px">Your eBay Shopping Cart</p>
+
+<div ng-show="available">
+	<div class="alert alert-danger">
+		<strong>One or more items in the cart are not available. </strong>
+	</div>
+</div>	
+
+<div class="col-md-1">
+<div class="item">
+    	<img src="http://localhost:3000/images/side-1.jpg" alt="carousel" width="300" height="225">
+     </div>
+     <br>
+     <div class="item">
+    	<img src="http://localhost:3000/images/side-2.jpg" alt="carousel" width="300" height="140">
+     </div>
+</div>
+<% if(display=='1'){ %>
+<div class="col-md-6" style="margin: 10px;">
+<% for(i in cartItems) { %>
+
+        <div class="col-md-11 col-md-offset-3 well">
+        
+        <div class="col-md-4">
+			      	<img src="<%= cartItems[i].image %> " style="width:150px;height:150px" />
+		</div><!-- col md 4 -->
+        <div class="col-md-8">
+        	<div class="row"><Strong>Item Code : </Strong><%- cartItems[i].item_code %></div>
+			<div class="row"><Strong>Item Description : </Strong><%- cartItems[i].description %> </div>
+			<div class="row"><Strong>Item Price : </Strong><%- cartItems[i].price %> </div>
+			<div class="row"><Strong>Available Quantity : </Strong><%- cartItems[i].available %></div>
+			<div class="row"><Strong>Item Quantity : </Strong><%- cartItems[i].quantity %>
+			<a id = "change" onclick = "change('<%- cartItems[i].item_code %>')">Change</a>
+
+
+<l class="collapse" id="<%- cartItems[i].item_code %>" style="list-style-type:none">
+  <li><input type="text" size="2" ng-model="newqty" ng-init="quantity='1'" ng-init="newqty > 1"></li>
+      		<div class="row">
+				<span ng-if="newqty > <%- cartItems[i].available %>" class="animate-if">
+					<span style="color:red">Please enter a lower number</span>
+				</span>
+			</div>
+	<li><a ng-click="updateCartQty('<%- cartItems[i].item_code %>');">Update</a></li>
+</l>			
+			</div>
+	
+	
+
+  
+  
+			<div class="row"><Strong>Seller : </Strong><%- cartItems[i].seller_username %> </div>
+  			<div class="row"><Strong>Seller : </Strong><%- cartItems[i].seller_username %> </div>
+  			<div class="row"><Strong>Cart id : </Strong><%- cartItems[i].cart_id %> </div>
+  			<div class="btn-group pull-right" style="width:150px">
+				<button ng-click="removeCart('<%- cartItems[i].cart_id %>');" type="button" class="btn btn-default">Remove</button>
+			</div>
+	   	</div>
+	   </div>	
+
+ <% } %> 
+ </div> <!-- col 8 -->
+ <% } else { %> 
+ <div class="col-md-6 well" style="margin: 10px;">
+ 	You dont have any items in your cart. Shop <a href="/allproducts"> here </a>
+ </div>
+ <% } %> 
+ 
+<div class="col-md-3 col-md-offset-1 well">
+<div class="row">
+<div class="col-md-12" style="margin: 4px;">
+<h3><b>Cart Summary</b></h3>(<%- cart%> items)
+
+<div class="row" style="margin: 4px;">
+	<h3><b>Total: $<%- total%></b></h3>
+</div>
+
+<div class="col-md-12" style="margin: 0px;">
+	<button type="button" style="height: 35px;" class="btn btn-primary btn-block" ng-click="proceedCheck();">Proceed to Checkout</button>
+</div>
+
+</div>
+</div>
+</div>
+ <!-- container -->
+ 
+  </body>
+</html>

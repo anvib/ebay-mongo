@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<script	src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.8/angular-route.js"></script>
+
+  <title><%= title %></title>
+  <head>
+  <style>
+  	div.logo {
+    position: absolute;
+    top: 0px;
+    left: 270px;
+}
+
+#checktrans {
+    opacity: 0.4;
+    font-family: "Helvetica Neue","Segoe UI",Helvetica,Arial,sans-serif;
+    font-size: 18px;
+    fond-color: #ffffff
+    font-weight: lighter;
+    line-height: 1.25;
+}
+
+#head {
+    
+    font-family: "Helvetica Neue","Segoe UI",Helvetica,Arial,sans-serif;
+    font-size: 3rem;
+    font-weight: lighter;
+    line-height: 1.25;
+}
+
+#head1 {
+    
+    font-family: "Helvetica Neue","Segoe UI",Helvetica,Arial,sans-serif;
+    font-size: 3rem;
+    font-weight: 200;
+    line-height: 1.25;
+}
+
+.container {
+    background-image: url(http://p.ebaystatic.com/aw/sell/lnd/hero_7plus_new@2x.jpg);
+    background-size: cover ;
+    background-repeat: no-repeat;
+    overflow: none;
+    display: block;
+    z-index: 1;
+    } 
+    
+  </style>
+  
+  <meta charset="utf-8"> 
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+ 
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.8/angular-route.js"></script>
+ 
+    	<script src="angularjs/sell.js"></script>
+  </head>
+  
+<body ng-app="sell">
+	
+	
+ 	<div class="container"> 
+ 		<div class="logo"> 
+ 			<img src="https://pbs.twimg.com/profile_images/698397813672058881/vpt3vjf3.jpg" width="170px" height="160px">
+ 		</div>
+ 	</div>
+ 
+ <br><br><br><br><br><br><br><br>
+  
+	<div class="container" style="height: 450px; width: 1800px;">
+	<br>
+		<div class="row">
+  			<div id="head" class="col-md-3 col-md-offset-4"><p align="center" style="font-size: 40px">Over 160 million shoppers want to buy your stuff</p></div>
+		</div>
+		<br>
+
+		  <div ng-view></div>
+	</div>
+	
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+  </body>
+</html>

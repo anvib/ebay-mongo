@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<script	src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+ <title><%= title %></title>
+  <head>
+  <meta charset="utf-8"> 
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    
+    <script src="angularjs/user.js"></script>
+    
+  </head>
+  
+  <body ng-app="user" ng-controller="payment">
+	
+		<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/EBay_logo.svg/2000px-EBay_logo.svg.png" alt="ebay-logo" style="width:150px;height:50px;">
+
+		<br>
+		
+		<div class="col-md-4 well" style="margin: 10px;">
+		
+		<h3 style="color: #C0C0C0; font-size: 25px"><span class="glyphicon glyphicon-circle-arrow-right" style="color:	#C0C0C0; font-size: 25px"></span>Sign in</h3>
+			
+			<ng-form name="ccNumberForm">
+			<div class="col-md-12" style="margin: 10px;">
+				Card Number<br>	  <input type="text" id="ccnumber" name="ccnumber" placeholder="Credit Card Number" ng-pattern="/^[0-9]{16}$/" ng-model="ccnumber">
+					<span ng-show="ccNumberForm.ccnumber.$error.pattern" style="color:red">Credit card number should be 16 digits</span>
+			</div>
+ 			</ng-form>
+ 			
+ 			<div class="row" style="margin: 10px;">
+ 			<div class="col-md-6">
+				Expiration Date<br>
+				
+				<select name="month" id="month"
+	      		ng-options="options.name for options in month.options track by options.id"
+	      		ng-model="month.selectedMonth"></select>
+	      		
+	      		<select name="year" id="year"
+	      		ng-options="options.name for options in year.options track by options.id"
+	      		ng-model="year.selectedYear"></select>
+      		</div>
+      		</div>
+      		
+  			<ng-form name="cccvvForm">
+      		<div class="row" style="margin: 0px;">
+      			<div class="col-md-12" style="margin: 10px;">
+	      			Security code<br>	<input type="text" cols="3" id="cvv" name="cvv" placeholder="CVV" ng-pattern="/^[0-9]{3,3}$/" ng-model="cvv">
+					<span ng-show="cccvvForm.cvv.$error.pattern" style="color:red">CVV is 3 digit number on back of your card</span>
+      			</div>
+      		</div>
+      		</ng-form>
+      	
+			<div class="row" style="margin: 10px;">
+				<div class="col-md-6" style="margin: 0px;">
+					Firstname<br>
+					<input type="text" style="font-size:12pt; height: 35px;" id="firstname" name="firstname" placeholder="Firstname" ng-model="firstname">
+				</div>
+				
+				<div class="col-md-6" style="margin: 0px;">
+					Lastname
+					<input type="text" style="font-size:12pt; height: 35px;" id="lastname" name="lastname" placeholder="Lastname" ng-model="lastname">
+				</div>
+			</div>
+			
+			<div class="row" style="margin: 20px;">
+				<button ng-click="btn_checkout();">Pay</button>
+			<div>
+		</div>
+		</div>	
+		</div>
+	</body>
+</html>
