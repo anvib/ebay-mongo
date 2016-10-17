@@ -1,6 +1,11 @@
 var ejs = require('ejs');
 var mysql = require('mysql');
 
+var poolSize = 50;
+var pool =[];
+
+//connection pool
+
 function getConnection(){
 	var connection = mysql.createConnection({
 		host : 'localhost',
@@ -12,10 +17,29 @@ function getConnection(){
 	return connection;
 }
 
+exports.createConnectionPool= function createConnectionPool(){
+	console.log("creating connections ")
+	for(var i=0; i<poolSize; i++){
+		pool.push(getConnection());
+	}
+}
+
+function getPoolConnection(){
+	console.log("getting connection ")
+	if(pool.length<=0){
+		console.log("No connections to fetch");
+		return null;
+	}
+	else{
+		return pool.pop();
+	}
+	
+}
+
 function insertRecord(callback, post, table){
 	//console.log("Data to insert is : "+post);
 	
-	var connection = getConnection();
+	var connection=getPoolConnection();
 	
 	connection.query('INSERT INTO '+table+' SET ?', post, function(err, result){
 		if(err)
@@ -36,7 +60,9 @@ function fetchData(callback, sqlQuery){
 	
 	console.log("Query to fetch : "+sqlQuery)
 	
-	var connection = getConnection();
+	var connection=getPoolConnection();
+	
+	//var connection = getConnection();
 	
 	connection.query(sqlQuery, function(err,rows,fields){
 		if(err)
@@ -56,7 +82,9 @@ function deleteData(callback, sqlQuery){
 	
 	console.log("Query to delete : "+sqlQuery)
 	
-	var connection = getConnection();
+	var connection=getPoolConnection();
+	
+	//var connection = getConnection();
 	
 	connection.query(sqlQuery, function(err,rows,fields){
 		if(err)
@@ -76,7 +104,9 @@ function updateData(callback, sqlQuery){
 	
 	console.log("Query to update : "+sqlQuery)
 	
-	var connection = getConnection();
+	var connection=getPoolConnection();
+	
+	//var connection = getConnection();
 	
 	connection.query(sqlQuery, function(err,rows,fields){
 		if(err)
