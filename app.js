@@ -60,9 +60,7 @@ var cronjob = require('node-cron-job');
 
 cronjob.setJobsPath(__dirname + '/routes/scheduleBids.js');  // Absolute path to the jobs module. 
  
-cronjob.startJob('first_job');
- 
-//cronjob.startJob('second_job');
+cronjob.startJob('bid_job');
 
 // development only
 if ('development' == app.get('env')) {

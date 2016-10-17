@@ -1,21 +1,22 @@
-var crypto = require('crypto'),
+var encrypt_password = require('crypto'),
     algorithm = 'aes-256-ctr',
     password = 'anvitaebay';
 
 function encrypt(text){
-  var cipher = crypto.createCipher(algorithm,password)
+  var cipher = encrypt_password.createCipher(algorithm,password)
   var crypted = cipher.update(text,'utf8','hex')
   crypted += cipher.final('hex');
   return crypted;
 }
  
 function decrypt(text){
-  var decipher = crypto.createDecipher(algorithm,password)
+  var decipher = encrypt_password.createDecipher(algorithm,password)
   var dec = decipher.update(text,'hex','utf8')
   dec += decipher.final('utf8');
   return dec;
 }
- 
+
+var winston_logger = require('winston')
 
 var ejs = require('ejs');
 var mysql = require('./mysql');
@@ -27,8 +28,12 @@ exports.loginCheck = function(req, res){
 	
 	  var username = req.param("username");
 	  var password = req.param("password");
+	 
+	  console.log("User entered password : ",password);
 	  
 	  var encryptPassword = encrypt(password)
+	  
+	  console.log("User encrypted password : ",encryptPassword);
 	  
 	  var found = false;
 	  
@@ -61,6 +66,8 @@ exports.loginCheck = function(req, res){
 					console.log("Session username is ",req.session.username);
 					console.log("Session firstname is ",req.session.firstname);
 					
+					winston_logger.log('info', 'user - '+req.session.username+' - successfully in login');
+					
 					var current = new Date();
 					var newLogin = dateformat(current, "yyyy-mm-dd HH:MM:ss");
 					
@@ -79,6 +86,8 @@ exports.loginCheck = function(req, res){
 					
 					}
 				else {
+					winston_logger.log('info', 'Invalid login attempt with username  '+username);
+						
 						console.log("Invalid Login");
 						loginResponse = {"statuscode":401};
 						res.send(loginResponse);
@@ -92,6 +101,8 @@ exports.getHomepage =  function(req,res){
 	if(req.session.username)
 	{	
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
+		
+		winston_logger.log('info', 'user - '+req.session.username+' - redirected to homepage');
 		
 		var getCart = "Select * from cart where username = ('"+req.session.username+"')";
 		
@@ -131,6 +142,8 @@ exports.successuser = function(req,res){
 
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
+		winston_logger.log('info', 'user - '+req.session.username+' - redirected to frontpage to view all products');
+		
 		var getQuery = "Select items.*, count(bid_username) as bidcount from items left outer join bidding on items.item_code = bidding.item_code where seller_username != '"+req.session.username+"' group by items.item_code";
 		
 	//	var getQuery = "Select items.*, bids. from items where seller_username != ('"+req.session.username+"')";
@@ -155,7 +168,7 @@ exports.successuser = function(req,res){
 									
 									products =  JSON.parse(str);
 									
-									 ejs.renderFile('./views/firstpage.ejs', {title: 'Welcome', user: req.session.firstname, values: products, cart: cart} , function(err, result) {
+									 ejs.renderFile('./views/firstpage.ejs', {title: 'Welcome', user: req.session.firstname, values: products, cart: cart, lastlogin: req.session.lastlogin } , function(err, result) {
 											if (!err) {
 												
 												res.end(result);
@@ -188,6 +201,8 @@ exports.sellItemDetails = function(req,res){
 		
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
+		winston_logger.log('info', 'user - '+req.session.username+' - trying to add a new item');
+		
 		var type = req.param("type");
 		var title = req.param("title");
 		var details = req.param("details");
@@ -218,6 +233,8 @@ exports.sellItemDetails = function(req,res){
 			}
 			else
 			{
+				winston_logger.log('info', 'user - '+req.session.username+' - added a new item in database successfully');
+				
 				itemAddResponse={"statuscode":200}
 				res.send(itemAddResponse);
 			} 
@@ -235,20 +252,70 @@ exports.newItemSuccess = function(req,res){
 	
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
+		
+		winston_logger.log('info', 'user - '+req.session.username+' - notified that new item was successfully added');
 	
-	ejs.renderFile('./views/newItemSuccess.ejs', { title: 'Thank You' } , function(err, result) {
-		if (!err) {
-			res.end(result);
-		}
-		else {
-			res.end('An error occurred');
-			console.log(err);
-		}
-	});
-	
+		var getCart = "Select cart.*, items.quantity as 'available' from cart inner join items on items.item_code = cart.item_code where username = ('"+req.session.username+"')";
+		
+		winston_logger.log('info', 'user - '+req.session.username+' - selected to proceed with checkout');
+		
+		mysql.fetchData(function(err,cartdetails){
+			if(err){
+				throw err;
+			}
+			else{	
+					cart = cartdetails.length;
+					
+					ejs.renderFile('./views/newItemSuccess.ejs', { title: 'Thank You', firstname: req.session.firstname, lastlogin: req.session.lastlogin } , function(err, result) {
+						if (!err) {
+							res.end(result);
+						}
+						else {
+							res.end('An error occurred');
+							console.log(err);
+						}
+					});
+			}
+		},getCart);
 	}else{
 		res.redirect('/');
 	}
+}
+
+exports.loadCardPage = function(req,res){
+	if(req.session.username){
+		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
+		
+		winston_logger.log('info', 'Redirecting user '+req.session.username+' to ask card details for payment');
+		
+		var getCart = "Select cart.*, items.quantity as 'available' from cart inner join items on items.item_code = cart.item_code where username = ('"+req.session.username+"')";
+		
+		winston_logger.log('info', 'user - '+req.session.username+' - selected to proceed with checkout');
+		
+		mysql.fetchData(function(err,cartdetails){
+			if(err){
+				throw err;
+			}
+			else{	
+					cart = cartdetails.length;
+					
+					ejs.renderFile('./views/creditCard.ejs', { title: 'Payment', firstname: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart } , function(err, result) {
+						if (!err) {
+							res.end(result);
+						}
+						else {
+							res.end('An error occurred');
+							console.log(err);
+						}
+					});
+					
+			}
+		},getCart);
+		
+	}else{
+		res.redirect('/');
+	}
+	
 }
 
 exports.takePayment = function(req,res){
@@ -273,6 +340,8 @@ exports.takePayment = function(req,res){
 		console.log("From user");
 		console.log(req.session.username);	
 		
+		winston_logger.log('info', 'Validating credit card details for payment from user - '+req.session.username);
+		
 		res.send(ccValidation);
 	}
 	else
@@ -286,6 +355,8 @@ exports.updateCart = function(req,res){
 		
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
+		winston_logger.log('info', 'user - '+req.session.username+' - updating quantity of item '+req.session.item.item_code+' in cart');
+
 		var item_code = req.param("item_code");
 		var new_qty = req.param("new_qty");
 		
@@ -316,6 +387,8 @@ exports.addCart = function(req,res){
 	var item_code = req.param("item");
 	var quantity = req.param("quantity");
 	
+	winston_logger.log('info', 'user - '+req.session.username+' - attempting to add item '+req.session.item.item_code+' to cart');
+	
 	console.log(" in add to cart session desc is ", req.session.item.description);
 	
 		var post  = {item_code: item_code, quantity: quantity, username: req.session.username};
@@ -329,6 +402,8 @@ exports.addCart = function(req,res){
 			}
 			else
 			{
+				winston_logger.log('info', 'user - '+req.session.username+' - successfully added item '+req.session.item.item_code+' to cart');
+				
 				console.log("item added in cart successfully")
 				itemAddResponse={"statuscode":200}
 				res.send(itemAddResponse);
@@ -345,6 +420,8 @@ exports.addCartSuccess = function(req,res){
 	
 	if(req.session.username){
 	res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
+	
+	winston_logger.log('info', 'user - '+req.session.username+' - notified that item was successfully added to cart');
 	
 	ejs.renderFile('./views/cartSuccess.ejs', { title: 'Thank You', item: req.session.item } , function(err, result) {
 		if (!err) {
@@ -366,6 +443,8 @@ exports.removeCart = function(req,res){
 		
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
+		winston_logger.log('info', 'user - '+req.session.username+' - removing item '+req.session.item.item_code+' from cart');
+		
 		var cart_id = req.param("cart_id");
 		
 		var deleteQuery = "Delete from cart where cart_id = '"+cart_id+"'";
@@ -375,6 +454,9 @@ exports.removeCart = function(req,res){
 					throw err;
 				}
 				else{
+					
+					winston_logger.log('info', 'user - '+req.session.username+' - successfully removed item '+req.session.item.item_code+' from cart');
+					
 					deleteResponse={"statuscode":200}
 					res.send(deleteResponse)
 				}  },deleteQuery);
@@ -392,6 +474,8 @@ exports.proceedtocheck = function(req,res){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
 		var getCart = "Select cart.*, items.quantity as 'available' from cart inner join items on items.item_code = cart.item_code where username = ('"+req.session.username+"')";
+		
+		winston_logger.log('info', 'user - '+req.session.username+' - selected to proceed with checkout');
 		
 		mysql.fetchData(function(err,cartdetails){
 			if(err){
@@ -435,6 +519,8 @@ exports.getCart = function(req,res){
 		
 			var getQuery = "Select cart.username, cart.cart_id, items.item_code, items.price, items.quantity as 'available', cart.quantity, items.description, items.seller_username, items.image from cart inner join items on cart.item_code = items.item_code where cart.username = '"+req.session.username+"'";
 		
+			winston_logger.log('info', 'user - '+req.session.username+' - redirected to view items in cart');
+			
 			mysql.fetchData(function(err,results){
 				if(err){
 					throw err;
@@ -478,6 +564,8 @@ exports.sellForm = function(req, res){
 		
 	res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');	
 		
+	winston_logger.log('info', 'user - '+req.session.username+' - views sell page to try to add a new item for sale');
+	
 	var checkType = req.param("type");
 	
 	sellType={"statuscode":200};
@@ -492,9 +580,19 @@ exports.sellForm = function(req, res){
 
 exports.redirectSellForm = function(req,res){
 	if(req.session.username){
-		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
+		
+	res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 	
-	ejs.renderFile('./views/sellForm.ejs', { title: 'Ebay Sell', username: req.session.username, firstname: req.session.firstname  } , function(err, result) {
+	var getCart = "Select cart.*, items.quantity as 'available' from cart inner join items on items.item_code = cart.item_code where username = ('"+req.session.username+"')";
+	
+	mysql.fetchData(function(err,cartdetails){
+		if(err){
+			throw err;
+		}
+		else{	
+				cart = cartdetails.length;
+				
+	ejs.renderFile('./views/sellForm.ejs', { title: 'Ebay Sell', username: req.session.username, firstname: req.session.firstname, cart: cart  } , function(err, result) {
 		if (!err) {	
 			res.end(result);
 		}
@@ -503,6 +601,9 @@ exports.redirectSellForm = function(req,res){
 			console.log(err);
 		}
 	});
+		}
+	},getCart);
+	
 	}else{
 		res.redirect('/');
 	}
@@ -513,11 +614,13 @@ exports.addDOB = function(req,res){
 	
 	var updateDOB = "Update users set dob = '"+dob+"' where username = '"+req.session.username+"'";
 	
-	 mysql.updateData(function(err,results){
+	mysql.updateData(function(err,results){
 			if(err){
 				throw err;
 			}
 			else{
+				
+				winston_logger.log('info', 'user - '+req.session.username+' - successfully updated date of birth ');
 				
 				dobUpdate = {"statuscode":200};
 				res.send(dobUpdate);
@@ -537,6 +640,8 @@ exports.addLocation = function(req,res){
 			}
 			else{
 				
+				winston_logger.log('info', 'user - '+req.session.username+' - successfully updated location ');
+				
 				dobUpdate = {"statuscode":200};
 				res.send(dobUpdate);
 				
@@ -554,6 +659,8 @@ exports.addGender = function(req,res){
 				throw err;
 			}
 			else{
+				
+				winston_logger.log('info', 'user - '+req.session.username+' - successfully updated gender ');
 				
 				dobUpdate = {"statuscode":200};
 				res.send(dobUpdate);
@@ -577,6 +684,8 @@ exports.getAccountDetails = function(req,res){
 					cart = cartdetails.length;
 					
 					var getUser = "Select * from users where username = '"+req.session.username+"'";
+					
+					winston_logger.log('info', 'user - '+req.session.username+' - redirects to view account details');
 					
 					mysql.fetchData(function(err, userdetails){
 						if(err){
@@ -612,6 +721,8 @@ exports.checkout = function(req,res){
 	if(req.session.username)
 	{
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
+		
+		winston_logger.log('info', 'Payment for user - '+req.session.username+' - successfully processed');
 		
 		console.log("checkout for ",req.session.username)
 		
@@ -701,8 +812,8 @@ exports.checkout = function(req,res){
 										
 											//update quantities in items table
 											for(item in quantitiesUpdate){
-												var updateQuantity = "Update items set quantity = quantity - "+quantitiesUpdate[item].quantity+" where item_code = "+quantitiesUpdate[item].item_code;
-												
+												var updateQuantity = "Update items set quantity = CASE WHEN quantity > "+quantitiesUpdate[item].quantity+" THEN quantity - "+quantitiesUpdate[item].quantity+" ELSE quantity END where item_code = "+quantitiesUpdate[item].item_code;
+													
 												 mysql.updateData(function(err,results){
 														if(err){
 															throw err;
@@ -752,11 +863,21 @@ exports.checkout = function(req,res){
 														
 															
 														}  },deleteQuery);
-									
 										} 
 									},post,table);
 							
 									}
+							
+							winston_logger.log('info', 'Cart for user - '+req.session.username+' - processed; monetory transactions completed and inventory updated');
+							
+							ejs.renderFile('./views/paymentSuccess.ejs', { title: 'Congratulations'  } , function(err, result) {
+								if (!err) {	
+									res.end(result);
+								}else {
+									res.end('An error occurred');
+									console.log(err);
+								}
+							});	
 						
 						}
 					},getMaxOrder);
@@ -791,6 +912,9 @@ exports.viewItem = function(req,res){
 				if(results.length > 0){	
 					currentItem = results[0];
 					req.session.item = currentItem;
+					
+					winston_logger.log('info', 'User - '+req.session.username+' - clicks to view item '+req.session.item.item_code);
+					
 					itemResponse={"item":currentItem, "statuscode":200}
 					res.send(itemResponse);
 				}	
@@ -891,6 +1015,8 @@ exports.viewItemDetails = function(req,res){
 										maxBid = req.session.item.price;
 									}
 										
+									winston_logger.log('info', 'User - '+req.session.username+' - clicks to view item '+req.session.item.item_code);
+									
 									ejs.renderFile('./views/itemDetails.ejs', { title: 'View Item', days: days, hours: hours, item: req.session.item, username: req.session.username, firstname: req.session.firstname, cart: cart, condition: condition, displayCart: displayCart, bids: bidCount, maxBid: maxBid  } , function(err, result) {
 										if (!err) {	
 											res.end(result);
@@ -973,6 +1099,8 @@ exports.getBidDetails = function(req,res){
 							bids[i].bid_time = day;
 						}
 						
+						winston_logger.log('info', 'User - '+req.session.username+' - views bids for item '+req.session.item.item_code);
+						
 						ejs.renderFile('./views/bidDetails.ejs', { title: 'Item Bid History', item: req.session.item, username: req.session.username, firstname: req.session.firstname, cart: cart, bids: bids  } , function(err, result) {
 							if (!err) {
 								res.end(result);
@@ -1023,6 +1151,8 @@ exports.addBid = function(req,res){
 							{
 								console.log("bid added successfully ");
 								
+								winston_logger.log('info', 'User - '+req.session.username+' - adds bid for item '+req.session.item.item_code);
+								
 								bidResponse={"statuscode":200}
 								res.send(bidResponse);
 							} 
@@ -1043,6 +1173,8 @@ exports.signupsuccessredirect = function(req,res){
 	
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
+	
+	winston_logger.log('info', 'Account created for new user with username - '+req.session.username);
 	
 	console.log("in signup success the user name is ",req.session.username);
 	console.log("and firstname is", req.session.firstname)
@@ -1069,6 +1201,7 @@ exports.submitSignup = function(req,res){
 	var mobile = req.param("mobile");
 	var password = req.param("password");
 	
+	winston_logger.log('info', 'Signup attempt for user with firstname '+firstname);
 	
 	var insert_check = false;
 	
@@ -1109,6 +1242,8 @@ exports.submitSignup = function(req,res){
 							
 								password = encrypt(password);
 								
+								console.log("new user password will be stored in database with encryption : ",password)
+								
 								var current = new Date();
 								var newLogin = dateformat(current, "yyyy-mm-dd HH:MM:ss");
 								
@@ -1129,11 +1264,14 @@ exports.submitSignup = function(req,res){
 										req.session.username = username;
 										req.session.firstname = firstname;
 										
+										winston_logger.log('info', 'User - '+req.session.username+' - successfully signed up');
+										
 										console.log(" In signup")
 										console.log("session username ", req.session.username)
 										console.log("session firstname ", req.session.firstname)
 										
-										signupResponse={"statuscode":200, "username":username}
+									//	signupResponse={"statuscode":200, "username":username}
+										signupResponse={"statuscode":200}
 										res.send(signupResponse);
 									} 
 								},post,table);
@@ -1157,6 +1295,8 @@ exports.getSummary = function(req,res){
 		}
 		else{	
 				cart = cartdetails.length;
+				
+				winston_logger.log('info', 'User - '+req.session.username+' - views account summary');
 				
 				ejs.renderFile('./views/summary.ejs', { title: 'Summary', username: req.session.username, user: req.session.firstname, cart: cart, lastlogin: req.session.lastlogin  } , function(err, result) {
 					if (!err) {
@@ -1207,6 +1347,8 @@ exports.getSummaryOrders = function(req,res){
 					}else{
 						display = 0;
 					}
+					
+					winston_logger.log('info', 'User - '+req.session.username+' - views account summary for ordered items');
 					
 					ejs.renderFile('./views/summaryOrders.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, cart: cart, orders: orders, lastlogin: req.session.lastlogin  } , function(err, result) {
 						if (!err) {
@@ -1267,6 +1409,8 @@ exports.getSummarySold = function(req,res){
 							}else{
 								display = 0;
 							}
+							
+							winston_logger.log('info', 'User - '+req.session.username+' - views account summary for sold items');
 						
 							ejs.renderFile('./views/summarySold.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart, sold: sold  } , function(err, result) {
 								if (!err) {
@@ -1325,7 +1469,7 @@ exports.getSummaryActive = function(req,res){
 								display = 0;
 							}
 						
-							console.log("value of display in active is ",display)
+							winston_logger.log('info', 'User - '+req.session.username+' - views account summary for active items to sell');
 							
 							ejs.renderFile('./views/summaryActive.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart, active: active  } , function(err, result) {
 								if (!err) {
@@ -1390,6 +1534,8 @@ exports.getSummaryBids = function(req,res){
 							display = 0;
 						}
 						
+						winston_logger.log('info', 'User - '+req.session.username+' - views account summary for current bids');
+						
 						ejs.renderFile('./views/summaryBids.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, cart: cart, bids: bids  } , function(err, result) {
 							if (!err) {
 								res.end(result);
@@ -1412,6 +1558,8 @@ exports.getSummaryBids = function(req,res){
 
 
 exports.logout = function(req,res){
+	
+	winston_logger.log('info', 'User - '+req.session.username+' - selects to logout');
 	
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');

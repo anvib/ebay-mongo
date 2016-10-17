@@ -1,18 +1,19 @@
 var mysql = require('./mysql');
+var winston_logger = require('winston')
 
-exports.first_job = {
+exports.bid_job = {
     
     after: {                
         seconds: 0,
-        minutes:0,
-        hours: 2,
+        minutes:10,
+        hours: 0,
         days: 0
     },
     job: function () {
-        console.log("first_job");
+
         
         var findExpireBids = "Select item_code, bid_endtime from items where bid_endtime < now() and bid_status = 0";
-        console.log(findExpireBids);
+       // console.log(findExpireBids);
         
         mysql.fetchData(function(err,expiryBids){
 			if(err){
@@ -24,9 +25,11 @@ exports.first_job = {
 					var str = JSON.stringify(expiryBids);
 					var expiredBids = JSON.parse(str);
 					
+					winston_logger.log('info', 'Bidding completed for item '+expiredBids[i].item_code);
+					
 					for(i in expiredBids){
 						var getBids = "Select bidding.*, items.seller_username from bidding inner join items on items.item_code = bidding.item_code where bidding.item_code="+expiredBids[i].item_code;
-						console.log(getBids);
+						//console.log(getBids);
 						
 						 mysql.fetchData(function(err,bids){
 								if(err){
