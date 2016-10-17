@@ -1,10 +1,3 @@
-/**
-var hw = encrypt("hello world")
-console.log("encrypted ",hw)
-console.log("decrypted ",decrypt(hw));
-
-**/
-
 var express = require('express')
   , routes = require('./routes')
   , http = require('http')
@@ -17,21 +10,19 @@ var mysql = require("./routes/mysql");
 var user = require("./routes/user");
 var index = require("./routes/index");
 
-var winston = require('winston')
+mysql.createConnectionPool();
 
-winston.add(
-  winston.transports.File, {
-    filename: 'somefile.log',
+var winston_logger = require('winston')
+
+winston_logger.add(
+	winston_logger.transports.File, {
+    filename: 'ebay-logs.log',
     level: 'info',
     json: true,
-    eol: 'rn', // for Windows, or `eol: ‘n’,` for *NIX OSs
+    eol: 'rn', 
     timestamp: true
   }
 )
- 
-winston.log('info','table added',new Date(), 'Hello log files!')
-winston.info('Hello again log files!')
-
 
 var fs = require('fs');
 var util = require('util');
@@ -92,9 +83,7 @@ app.get('/summaryBids',user.getSummaryBids);
 app.get('/summaryOrders',user.getSummaryOrders);
 app.get('/summarySold',user.getSummarySold);
 app.get('/summaryActive',user.getSummaryActive);
-app.get('/creditcardvalidation', function(req, res){
-	  res.render('creditCard', { title: 'Payment'});
-});
+app.get('/creditcardvalidation', user.loadCardPage);
 app.get('/paymentSuccess',function(req, res){
 	  res.render('paymentSuccess', { title: 'Payment Success'});
 	});
