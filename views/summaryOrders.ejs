@@ -163,7 +163,9 @@ function openList() {
 
 		<% } else { %>	
 
+
 		<% for(i in orders) { %>
+
 			<div class="row well">
 				<div class="col-md-4">
 			    	<img src="<%= orders[i].image %> " style="width:150px;height:150px" />
@@ -211,6 +213,7 @@ function openList() {
 								Order date:	
 							</div>
 							<div class="col-md-8">
+								2016-11-01 05:15:33
 								<%- orders[i].orderdate %>
 							</div>
 						</div>

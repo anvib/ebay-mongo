@@ -14,7 +14,7 @@
   </head>
   
 
-<body ng-app="user" ng-controller="cart">
+<body ng-app="user" ng-controller="cart" style="background-color:#f5f5f5;">
 
 	
 <div class="row" style="margin: 10px;">
@@ -31,7 +31,7 @@
 		</div> <!-- button group 1 -->
 		<button type="button"class="btn btn-default" onclick="window.location.href='/sell'">Sell</button>
  	</div><!-- button group 2 -->
-
+&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Last sign in <%- lastlogin %>
 	
 		<div class="btn-group pull-right" style="width:150px">
 			<button type="button"class="btn btn-default" onclick="window.location.href='/summary'">My eBay</button>
@@ -45,33 +45,56 @@
 
 </div><!-- row -->
 
- 
+<div class="container" style="margin=10px;"> 
+	<img src="http://localhost:3000/images/logo.jpg" width="130px" height="50px">
+	<button type="button"class="btn btn-default" onclick="window.location.href='/allproducts'">Shop</button>
+	<input type="text" name="search" placeholder="Search..." maxlength="50" size="100" style="padding: 5px;">
+	<button type="button" style="height: 35px;" class="btn btn-primary"><b>Search</b></button>
+</div>
+
+<div class="container">
+<div class="col-md-2" style="margin: 10px;">
+<img src="http://localhost:3000/images/fp-side-1.gif" width="170px" height="850px">
+</div>
+
 <div class="container" style="margin: 10px;">
-	<div class="col-md-8 well" style="margin: 10px;"> 	
+	<div class="col-md-8 well" style="margin: 10px; background-color:#ffffff;" > 	
 		<% for(i in values) { %>
 			<div>
-		        <div class="col-md-12 well">
-			        <div class="col-md-4 well">
-			      	<img src="<%= values[i].image %> " style="width:150px;height:150px" />
-			        </div><!-- col md 4 -->
-			        <div class="col-md-8">
-						<div class="row"><a ng-click="viewItem('<%- values[i].item_code %>');"><Strong><%- values[i].description %></Strong></a></div>
-						<div class="row"><Strong>$<%- values[i].price %></Strong> </div>
-					
+		        <div class="col-md-12 well"  style="background-color:#ffffff;">
+			        <div class="col-md-6">
+			      	<img src="<%= values[i].image %> " style="width:250px;height:250px" />
+			        </div><!-- col md 6 -->
+			        <div class="col-md-6">
+						<div class="row" style="font-size:130%;"><a ng-click="viewItem('<%- values[i].item_code %>');"><Strong><%- values[i].description %></Strong></a></div>
+						
+						<br>
+						
+						<div class="row">
+							<div class="col-md-6" style="font-size:130%;">
+								<Strong>$<%- values[i].price %></Strong>
+							</div>
+						
+							<div class="col-md-6" style="font-size:130%;">
+								Free Shipping
+							</div>
+						
+						 </div>
+						
+						<br>
+						<div class="row" style="font-size:130%;">
 							<% if(values[i].bid=='1'){ %>
 							
-								<%= values[i].bidcount %> bids
+								<%= values[i].bids.length %> bids
 								
 							<% } %> 
-					
+						</div>
 					</div><!-- col md 8 -->
 			</div>	
 		 
 		<% } %> 
 	</div><!-- col md 8 -->
 </div> <!-- container -->
-
- 	
- 
+</div> <!-- new -->
   </body>
 </html>

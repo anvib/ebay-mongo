@@ -1,3 +1,5 @@
+var isodate = require("isodate");
+
 var encrypt_password = require('crypto'),
     algorithm = 'aes-256-ctr',
     password = 'anvitaebay';
@@ -19,7 +21,10 @@ function decrypt(text){
 var winston_logger = require('winston')
 
 var ejs = require('ejs');
-var mysql = require('./mysql');
+
+var mongo = require("./mongo");
+var mongoURL = "mongodb://localhost:27017/ebay";
+
 var dateformat = require('dateformat');
 
 var json_responses;
@@ -28,72 +33,82 @@ exports.loginCheck = function(req, res){
 	
 	  var username = req.param("username");
 	  var password = req.param("password");
-	 
-	  console.log("User entered password : ",password);
 	  
 	  var encryptPassword = encrypt(password)
 	  
-	  console.log("User encrypted password : ",encryptPassword);
-	  
 	  var found = false;
 	  
-	  var getQuery = "Select * from users where password = '"+encryptPassword+"' and (username = '"+username+"' or email = '"+username+"')";
-	  
-	  mysql.fetchData(function(err,results){
-			if(err){
-				throw err;
-			}
-			else{
-				if(results.length > 0){
-		
-					var str = JSON.stringify(results[0]);
-					var user = JSON.parse(str);
-					var firstname = user.firstname;
-		
-					var lastdate=dateformat(results[0].last_login, "mm/dd/yyyy");
-					var hours = results[0].last_login.getHours();
-					var minutes = results[0].last_login.getMinutes();
-					var lasttime = hours+":"+minutes;
-					var lastlogin = lastdate +' at '+lasttime+' PM PST'
-										
-					req.session.destroy();
-					
-					req.session.username = username;
-					req.session.firstname = firstname
-					req.session.lastlogin = lastlogin;
-					
-					console.log("Session initialized");
-					console.log("Session username is ",req.session.username);
-					console.log("Session firstname is ",req.session.firstname);
-					
-					winston_logger.log('info', 'user - '+req.session.username+' - successfully in login');
-					
-					var current = new Date();
-					var newLogin = dateformat(current, "yyyy-mm-dd HH:MM:ss");
-					
-					var updateLastLogin = "Update users set last_login = '"+newLogin+"' where username = '"+username+"'";
-					
-					 mysql.updateData(function(err,results){
-							if(err){
-								throw err;
-							}
-							else{
-								
-							}  },updateLastLogin);
-					
-					loginResponse = {"statuscode":200};
-					res.send(loginResponse);
-					
-					}
-				else {
-					winston_logger.log('info', 'Invalid login attempt with username  '+username);
+	  mongo.connect(mongoURL, function(){   
+			
+			var coll = mongo.collection('users');
+			
+			coll.find({username: username, password: encryptPassword}).toArray(function(err, results) {
+					if(err) {
+						throw err;
+					} else {
+						if(results.length > 0) {
+							
+							var str = JSON.stringify(results[0]);
+							var user = JSON.parse(str);
+							var firstname = user.firstname;
+							
+							var lastdate=dateformat(results[0].last_login, "mm/dd/yyyy");
+							
+							var date = new Date(results[0].last_login);
+							
+							var hours = date.getHours();
+							var minutes = date.getMinutes();
+							var lasttime = hours+":"+minutes;
+							var lastlogin = lastdate +' at '+lasttime+' PM PST';
+							
+							req.session.destroy();
+							
+							req.session.username = username;
+							req.session.firstname = firstname
+							req.session.lastlogin = lastlogin;
+							
+							console.log("Session initialized");
+							console.log("Session username is "+req.session.username);
+							console.log("Session firstname is "+req.session.firstname);
+							console.log("Session lastlogin is "+req.session.lastlogin);
+							
+							winston_logger.log('info', 'user - '+req.session.username+' - successfully in login');
+							
+							var current = new Date();
+							var newLogin = dateformat(current, "yyyy-mm-dd HH:MM:ss");
+							
+							coll.update(
+									{
+										username:username
+									},
+									{
+										$set: {
+											last_login : newLogin
+											  }
+									}), function(err, user){ 
+										if(err) {
+											throw err;
+										} else {
+											//console.log("last login updated successfully");
+										}
+								};
+							
+							loginResponse = {"statuscode":200};
+							res.send(loginResponse);
 						
-						console.log("Invalid Login");
-						loginResponse = {"statuscode":401};
-						res.send(loginResponse);
+						}else{
+							winston_logger.log('info', 'Invalid login attempt with username  '+username);
+							
+							console.log("Invalid Login");
+							loginResponse = {"statuscode":401};
+							res.send(loginResponse);
+						}
+					}
+				});
+			});
 
-					}   }  },getQuery);  
 };
+
 
 exports.getHomepage =  function(req,res){
 	var cart = 0;
@@ -104,28 +119,31 @@ exports.getHomepage =  function(req,res){
 		
 		winston_logger.log('info', 'user - '+req.session.username+' - redirected to homepage');
 		
-		var getCart = "Select * from cart where username = ('"+req.session.username+"')";
+
+		mongo.connect(mongoURL, function(){   
 		
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
+		var coll = mongo.collection('users');
+		
+		coll.find({username:req.session.username}).toArray(function(err, user) {
+
+			if(err) {
 				throw err;
-			}
-			else{	
-					cart = cartdetails.length;
-					
-					 ejs.renderFile('./views/homepage.ejs', {title: 'Welcome to Ebay', firstname: req.session.firstname, cart: cart, lastlogin:req.session.lastlogin } , function(err, result) {
-							if (!err) {
-								
-								res.end(result);
-							}
-							else {
-								res.end('An error occurred');
-								console.log(err);
-							}
-						});	
-			}
-		},getCart);
-		
+			} else {
+			cart = user[0].cart.length;
+			
+			ejs.renderFile('./views/homepage.ejs', {title: 'Welcome to Ebay', firstname: req.session.firstname, cart: cart, lastlogin:req.session.lastlogin } , function(err, result) {
+					if(!err){
+						res.end(result);
+					}
+					else{
+						res.end('An error occurred');
+						console.log(err);
+					}
+				});
+			
+		}
+		});
+	});
 	}else
 	{
 		res.redirect('/');
@@ -138,61 +156,61 @@ exports.successuser = function(req,res){
 	var products;
 	
 	if(req.session.username)
-	{	
-
+	{
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
 		winston_logger.log('info', 'user - '+req.session.username+' - redirected to frontpage to view all products');
 		
-		var getQuery = "Select items.*, count(bid_username) as bidcount from items left outer join bidding on items.item_code = bidding.item_code where seller_username != '"+req.session.username+"' group by items.item_code";
-		
-	//	var getQuery = "Select items.*, bids. from items where seller_username != ('"+req.session.username+"')";
-		
-		var getCart = "Select * from cart where username = ('"+req.session.username+"')";
-		
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
-				throw err;
-			}
-			else{	
-					cart = cartdetails.length;
-					
-					mysql.fetchData(function(err,results){
-							if(err){
-								throw err;
-							}
-							else{
-								if(results.length > 0){
-									
-									var str = JSON.stringify(results);
-									
-									products =  JSON.parse(str);
-									
-									 ejs.renderFile('./views/firstpage.ejs', {title: 'Welcome', user: req.session.firstname, values: products, cart: cart, lastlogin: req.session.lastlogin } , function(err, result) {
-											if (!err) {
-												
-												res.end(result);
-											}
-											else {
-												res.end('An error occurred');
-												console.log(err);
-											}
-										});	
-									  
-									}
-								else {
-										console.log("No products");
-
-									}   }  },getQuery);
-				}
+		mongo.connect(mongoURL, function(){
+		var coll_users = mongo.collection('users');
 			
-		},getCart);
+		coll_users.find({username:req.session.username}).toArray(function(err, user) {
+
+			if(err) {
+				throw err;
+			} else {
+				
+			cart = user[0].cart.length;
+					
+			var coll_items = mongo.collection('items');
+			coll_items.find({seller_username: { $nin: [req.session.username] } }).toArray(function(err, items) {
+				if(err) {
+					throw err;
+				} else {
+					if(items.length > 0){
+						for(i in items){
+							if(items[i].bid == 1)
+							{
+								console.log("bids are");
+								console.log(items[i].bids)
+							}
+					}
+
+				}
+				
+				var str = JSON.stringify(items);
+				
+				products =  JSON.parse(str);
+				
+				ejs.renderFile('./views/firstpage.ejs', {title: 'Welcome', user: req.session.firstname, values: products, cart: cart, lastlogin: req.session.lastlogin } , function(err, result) {
+						if (!err) {
+							res.end(result);
+						}
+						else {
+							res.end('An error occurred');
+							console.log(err);
+						}
+					});
+			}
+				});
+		}
+			});
+		});
 	}
 	else
 	{
 		res.redirect('/');
 	}
-
 }
 
 exports.sellItemDetails = function(req,res){
@@ -214,31 +232,45 @@ exports.sellItemDetails = function(req,res){
 		
 		var currentTime = new Date();
 		var insertTime =  new Date();
-		var bbid_endtime;
-		
+		var bid_endtime;
+
 		if(bid == 1){
 			bid_endtime =  new Date(currentTime.setTime( currentTime.getTime() + 4 * 86400000 ));
 		}else{
 			bid_endtime = null;
 		}
-			
-		var post  = {bid: bid, item_type: type, description: title, condition_prod: condition, details: details, seller_username: req.session.username, seller_state: seller_state, price: price, quantity: quantity, insert_time: insertTime, bid_endtime: bid_endtime };
-		
-		var table = 'items';
-		
-		mysql.insertRecord(function(err,results){
-			
-			if(err){
-				throw err;
-			}
-			else
-			{
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+			var coll_items = mongo.collection('items');
+
+			coll_items.find().sort({_id:-1}).limit(1).toArray(function(err, maxID) {
+				var newID;
+
+				console.log("output is")
+				console.log(maxID)
+
+					if(maxID.length > 0){
+						var maxID = maxID[0]._id;
+						newID = maxID + 1;	
+					}else{
+						newID = 1;
+					}
+					coll_items.insert({_id: newID, item_code: newID, bids: [], image: "", bid: bid, bid_status: 0, item_type: type, description: title, condition_prod: condition, details: details, seller_username: req.session.username, seller_state: seller_state, price: price, quantity: quantity, insert_time: dateformat(insertTime,"yyyy-mm-dd HH:MM:ss"), bid_endtime: dateformat(bid_endtime,"yyyy-mm-dd HH:MM:ss") }, function(err, user){
+
+				if(err) {
+					throw err;
+				} else {
+						//
+					}
+				});
+
 				winston_logger.log('info', 'user - '+req.session.username+' - added a new item in database successfully');
-				
-				itemAddResponse={"statuscode":200}
-				res.send(itemAddResponse);
-			} 
-		},post,table);
+					
+					itemAddResponse={"statuscode":200}
+					res.send(itemAddResponse);
+			});
+			});
 	
 	}else
 	{
@@ -254,19 +286,20 @@ exports.newItemSuccess = function(req,res){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
 		winston_logger.log('info', 'user - '+req.session.username+' - notified that new item was successfully added');
-	
-		var getCart = "Select cart.*, items.quantity as 'available' from cart inner join items on items.item_code = cart.item_code where username = ('"+req.session.username+"')";
 		
-		winston_logger.log('info', 'user - '+req.session.username+' - selected to proceed with checkout');
-		
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
-				throw err;
-			}
-			else{	
-					cart = cartdetails.length;
-					
-					ejs.renderFile('./views/newItemSuccess.ejs', { title: 'Thank You', firstname: req.session.firstname, lastlogin: req.session.lastlogin } , function(err, result) {
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+
+			winston_logger.log('info', 'user - '+req.session.username+' - selected to proceed with checkout');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+				if(err) {
+						throw err;
+					} else {
+						cart = user[0].cart.length;
+
+						ejs.renderFile('./views/newItemSuccess.ejs', { title: 'Thank You', firstname: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart } , function(err, result) {
 						if (!err) {
 							res.end(result);
 						}
@@ -275,8 +308,10 @@ exports.newItemSuccess = function(req,res){
 							console.log(err);
 						}
 					});
-			}
-		},getCart);
+
+					}
+			});
+			});
 	}else{
 		res.redirect('/');
 	}
@@ -288,17 +323,18 @@ exports.loadCardPage = function(req,res){
 		
 		winston_logger.log('info', 'Redirecting user '+req.session.username+' to ask card details for payment');
 		
-		var getCart = "Select cart.*, items.quantity as 'available' from cart inner join items on items.item_code = cart.item_code where username = ('"+req.session.username+"')";
-		
 		winston_logger.log('info', 'user - '+req.session.username+' - selected to proceed with checkout');
 		
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
-				throw err;
-			}
-			else{	
-					cart = cartdetails.length;
-					
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+				if(err) {
+						throw err;
+					} else {
+						cart = user[0].cart.length;
+
 					ejs.renderFile('./views/creditCard.ejs', { title: 'Payment', firstname: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart } , function(err, result) {
 						if (!err) {
 							res.end(result);
@@ -308,9 +344,11 @@ exports.loadCardPage = function(req,res){
 							console.log(err);
 						}
 					});
-					
-			}
-		},getCart);
+
+					}
+			});
+
+			});
 		
 	}else{
 		res.redirect('/');
@@ -355,23 +393,58 @@ exports.updateCart = function(req,res){
 		
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
-		winston_logger.log('info', 'user - '+req.session.username+' - updating quantity of item '+req.session.item.item_code+' in cart');
-
 		var item_code = req.param("item_code");
 		var new_qty = req.param("new_qty");
+		winston_logger.log('info', 'user - '+req.session.username+' - updating quantity of item '+item_code+' in cart');
 		
-		var updateQuantity = "Update cart set quantity = "+new_qty+" where item_code = "+item_code+" and username = '"+req.session.username+"'";
-		
-		 mysql.updateData(function(err,results){
-				if(err){
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+				if(err) {
 					throw err;
+				} else {
+
+					var newCart = [];
+
+					for(i in user[0].cart){
+						if(user[0].cart[i].item_code == item_code){
+							newItem = {
+								"item_code" : item_code,
+								"quantity" : new_qty
+							}
+
+							newCart.push(newItem);
+
+						}else{
+							newCart.push(user[0].cart[i])
+						}
+					}
+			
+					coll_users.update(
+							{
+								username: req.session.username
+							},
+							{
+								$set: {
+									cart : newCart
+									  }
+							}), function(err, user){ 
+								if(err) {
+									throw err;
+								} else {
+									winston_logger.log('info', 'user - '+req.session.username+' - successfully removed item '+req.session.item.item_code+' from cart');
+						
+									updateResponse = {"statuscode":200}
+									res.send(updateResponse);
+								}
+						};
+						updateResponse = {"statuscode":200}
+						res.send(updateResponse);
 				}
-				else{
-					
-					updateResponse = {"statuscode":200}
-					res.send(updateResponse);
-					
-				}  },updateQuantity);
+			});	
+			});
 		
 	}else{
 		res.redirect('/');
@@ -389,27 +462,58 @@ exports.addCart = function(req,res){
 	
 	winston_logger.log('info', 'user - '+req.session.username+' - attempting to add item '+req.session.item.item_code+' to cart');
 	
-	console.log(" in add to cart session desc is ", req.session.item.description);
+	console.log(" in add to cart session desc is "+ req.session.item.description);
 	
-		var post  = {item_code: item_code, quantity: quantity, username: req.session.username};
-	
-		var table = 'cart';
-	
-		mysql.insertRecord(function(err,results){
-			
-			if(err){
+	mongo.connect(mongoURL, function(){
+
+		var coll_users = mongo.collection('users');
+
+		coll_users.find({username:req.session.username}).toArray(function(err, user) {
+			if(err) {
 				throw err;
+			} else {
+				var newCart = [];
+
+				if(user[0].cart.length > 0){
+					for(i in user[0].cart){
+						newCart.push(user[0].cart[i])
+					}
+					item = {
+							"item_code": item_code,
+							"quantity": quantity
+						}
+						newCart.push(item)
+				}else{
+					item = {
+						"item_code": item_code,
+						"quantity": quantity
+					}
+
+					newCart.push(item)
+				}
+
+				coll_users.update(
+						{
+							username: req.session.username
+						},
+						{
+							$set: {
+								cart : newCart
+								  }
+						}), function(err, user){ 
+							if(err) {
+								throw err;
+							} else {
+								//console.log("new bid added successfully");
+							}
+					};
+					
+					itemAddResponse={"statuscode":200}
+					res.send(itemAddResponse);
 			}
-			else
-			{
-				winston_logger.log('info', 'user - '+req.session.username+' - successfully added item '+req.session.item.item_code+' to cart');
-				
-				console.log("item added in cart successfully")
-				itemAddResponse={"statuscode":200}
-				res.send(itemAddResponse);
-			} 
-		},post,table);
-	}
+		});	
+		});
+}
 	else
 	{
 		res.redirect('/');
@@ -442,24 +546,58 @@ exports.removeCart = function(req,res){
 	if(req.session.username){
 		
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
-		
-		winston_logger.log('info', 'user - '+req.session.username+' - removing item '+req.session.item.item_code+' from cart');
-		
 		var cart_id = req.param("cart_id");
+		winston_logger.log('info', 'user - '+req.session.username+' - removing item '+cart_id+' from cart');
 		
-		var deleteQuery = "Delete from cart where cart_id = '"+cart_id+"'";
-		
-		  mysql.deleteData(function(err,results){
-				if(err){
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+				if(err) {
 					throw err;
-				}
-				else{
+				} else {
+
+					var newCart = [];
 					
-					winston_logger.log('info', 'user - '+req.session.username+' - successfully removed item '+req.session.item.item_code+' from cart');
+					for(i in user[0].cart){
+						if(user[0].cart[i].item_code == cart_id){
+							//do nothing
+						}else{
+							newCart.push(user[0].cart[i])
+						}
+					}
+			
+					console.log("trying to update")
 					
+					mongo.connect(mongoURL, function(){
+
+						var coll_users1 = mongo.collection('users');
+							console.log("in here")
+					coll_users1.update(
+							{
+								username: req.session.username
+							},
+							{
+								$set: {
+									cart : newCart
+									  }
+							}), function(err, user1){ 
+								if(err) {
+									throw err;
+								} else {
+									deleteResponse={"statuscode":200}
+									res.send(deleteResponse)
+								}
+						};
+					});	
+					winston_logger.log('info', 'user - '+req.session.username+' - successfully removed item '+cart_id+' from cart');
 					deleteResponse={"statuscode":200}
 					res.send(deleteResponse)
-				}  },deleteQuery);
+						
+				}
+			});	
+			});
 	}else
 	{
 		res.redirect('/');
@@ -473,18 +611,19 @@ exports.proceedtocheck = function(req,res){
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
-		var getCart = "Select cart.*, items.quantity as 'available' from cart inner join items on items.item_code = cart.item_code where username = ('"+req.session.username+"')";
-		
 		winston_logger.log('info', 'user - '+req.session.username+' - selected to proceed with checkout');
 		
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
-				throw err;
-			}
-			else{	
-					cart = cartdetails.length;
-					
-					var str = JSON.stringify(cartdetails);
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+				if(err) {
+						throw err;
+					} else {
+						cart = user[0].cart.length;
+
+						var str = JSON.stringify(user);
 					var cartItems = JSON.parse(str);
 					
 					var passError = 0;
@@ -500,16 +639,17 @@ exports.proceedtocheck = function(req,res){
 						checkoutResponse = {"statuscode":200}
 					}
 					res.send(checkoutResponse);
-			}
-		},getCart);
-		
+
+					}
+			});
+		});
+
 	}else{
 		res.redirect('/');
 	}
 }
 
 exports.getCart = function(req,res){
-	
 	var cartItems;
 	var total = 0;
 	
@@ -517,40 +657,71 @@ exports.getCart = function(req,res){
 		{
 			res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
-			var getQuery = "Select cart.username, cart.cart_id, items.item_code, items.price, items.quantity as 'available', cart.quantity, items.description, items.seller_username, items.image from cart inner join items on cart.item_code = items.item_code where cart.username = '"+req.session.username+"'";
-		
 			winston_logger.log('info', 'user - '+req.session.username+' - redirected to view items in cart');
 			
-			mysql.fetchData(function(err,results){
-				if(err){
-					throw err;
-				}
-				else{
-					var display;
+			mongo.connect(mongoURL, function(){
+
+				var coll_users = mongo.collection('users');
 					
-					if(results.length > 0){
-						display = 1;
-					var str =  JSON.stringify(results);
-					cartItems = JSON.parse(str);
-					
-					for(i in cartItems)
-						total = total + (cartItems[i].price * cartItems[i].quantity)
-					
-				}else{
-					display = 0;
-				}
-					
-					ejs.renderFile('./views/cart.ejs', { title: 'My Cart', lastlogin: req.session.lastlogin, display: display, cartItems: cartItems, cart: results.length, user: req.session.firstname, total: total } , function(err, result) {
-						if (!err) {
-							res.end(result);
+				coll_users.find({username:req.session.username}).toArray(function(err, user) {
+					if(err) {
+						throw err;
+					} else {
+						cart = user[0].cart.length;
+
+						var cartItems = [];
+						var itemsInCart = [];
+						for(i in user[0].cart){
+							itemsInCart.push(Number(user[0].cart[i].item_code));
 						}
-						else {
-							res.end('An error occurred');
-							console.log(err);
-						}
-					});
-				}
-			},getQuery);
+
+						var coll_items = mongo.collection('items');
+						coll_items.find({ item_code: { $in: itemsInCart  }   }).toArray(function(err, items) {
+							if(err) {
+								throw err;
+							} else {
+								var display;
+								var total = 0;
+								
+								if(items.length > 0){
+									display = 1;
+								
+									cartItems = items;
+									
+									//console.log("cartItems are")
+									//console.log(cartItems)
+									
+									for(i in cartItems){
+										cartItems[i].available = cartItems[i].quantity;
+										for(j in user[0].cart){
+											if(user[0].cart[j].item_code == cartItems[i].item_code){
+												cartItems[i].quantity = user[0].cart[j].quantity;
+											}
+										}
+										total = total + (cartItems[i].price * cartItems[i].quantity) 
+									}
+								}else{
+									display = 0;
+								}		
+									
+								ejs.renderFile('./views/cart.ejs', { title: 'My Cart', lastlogin: req.session.lastlogin, display: display, cartItems: cartItems, cart: cart, user: req.session.firstname, total: total } , function(err, result) {
+									if (!err) {
+										res.end(result);
+									}
+									else {
+										res.end('An error occurred');
+										console.log(err);
+									}
+								});
+									
+								}
+							});
+							
+							}
+				});
+			});
+			
+			
 	}
 	else{
 			res.redirect('/');
@@ -583,26 +754,30 @@ exports.redirectSellForm = function(req,res){
 		
 	res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 	
-	var getCart = "Select cart.*, items.quantity as 'available' from cart inner join items on items.item_code = cart.item_code where username = ('"+req.session.username+"')";
-	
-	mysql.fetchData(function(err,cartdetails){
-		if(err){
-			throw err;
-		}
-		else{	
-				cart = cartdetails.length;
-				
-	ejs.renderFile('./views/sellForm.ejs', { title: 'Ebay Sell', username: req.session.username, firstname: req.session.firstname, cart: cart  } , function(err, result) {
-		if (!err) {	
-			res.end(result);
-		}
-		else {
-			res.end('An error occurred');
-			console.log(err);
-		}
-	});
-		}
-	},getCart);
+	mongo.connect(mongoURL, function(){
+
+		var coll_users = mongo.collection('users');
+
+		coll_users.find({username:req.session.username}).toArray(function(err, user) {
+			if(err) {
+					throw err;
+				} else {
+					cart = user[0].cart.length;
+
+ejs.renderFile('./views/sellForm.ejs', { title: 'Ebay Sell', username: req.session.username, firstname: req.session.firstname, cart: cart  } , function(err, result) {
+	if (!err) {	
+		res.end(result);
+	}
+	else {
+		res.end('An error occurred');
+		console.log(err);
+	}
+});
+
+				}
+		});
+
+		});
 	
 	}else{
 		res.redirect('/');
@@ -611,61 +786,90 @@ exports.redirectSellForm = function(req,res){
 
 exports.addDOB = function(req,res){
 	var dob = req.param("dob");
-	
-	var updateDOB = "Update users set dob = '"+dob+"' where username = '"+req.session.username+"'";
-	
-	mysql.updateData(function(err,results){
-			if(err){
-				throw err;
-			}
-			else{
-				
-				winston_logger.log('info', 'user - '+req.session.username+' - successfully updated date of birth ');
-				
-				dobUpdate = {"statuscode":200};
-				res.send(dobUpdate);
-				
-			}  },updateDOB);
+
+
+	mongo.connect(mongoURL, function(){
+
+	var coll_users = mongo.collection('users');
+
+			coll_users.update(
+						{
+							username: req.session.username
+						},
+						{
+							$set: {
+								dob : dob
+								  }
+						}), function(err, user){ 
+							if(err) {
+								throw err;
+							} else {
+								winston_logger.log('info', 'user - '+req.session.username+' - successfully updated date of birth ');
+					
+								dobUpdate = {"statuscode":200};
+								res.send(dobUpdate);
+							}
+					};
+	});
 		
 }
 
 exports.addLocation = function(req,res){
 	var location = req.param("location");
 	
-	var updateLocation = "Update users set location = '"+location+"' where username = '"+req.session.username+"'";
-	
-	 mysql.updateData(function(err,results){
-			if(err){
-				throw err;
-			}
-			else{
-				
-				winston_logger.log('info', 'user - '+req.session.username+' - successfully updated location ');
-				
-				dobUpdate = {"statuscode":200};
-				res.send(dobUpdate);
-				
-			}  },updateLocation);
+
+	mongo.connect(mongoURL, function(){
+
+	var coll_users = mongo.collection('users');
+
+			coll_users.update(
+						{
+							username: req.session.username
+						},
+						{
+							$set: {
+								location : location
+								  }
+						}), function(err, user){ 
+							if(err) {
+								throw err;
+							} else {
+								winston_logger.log('info', 'user - '+req.session.username+' - successfully updated date of birth ');
+					
+								dobUpdate = {"statuscode":200};
+								res.send(dobUpdate);
+							}
+					};
+	});
 		
 }
 
 exports.addGender = function(req,res){
 	var gender = req.param("gender");
 	
-	var updateGender = "Update users set gender = '"+gender+"' where username = '"+req.session.username+"'";
-	
-	 mysql.updateData(function(err,results){
-			if(err){
-				throw err;
-			}
-			else{
-				
-				winston_logger.log('info', 'user - '+req.session.username+' - successfully updated gender ');
-				
-				dobUpdate = {"statuscode":200};
-				res.send(dobUpdate);
-				
-			}  },updateGender);
+	mongo.connect(mongoURL, function(){
+
+		var coll_users = mongo.collection('users');
+
+				coll_users.update(
+							{
+								username: req.session.username
+							},
+							{
+								$set: {
+									gender : gender
+									  }
+							}), function(err, user){ 
+								if(err) {
+									throw err;
+								} else {
+									winston_logger.log('info', 'user - '+req.session.username+' - successfully updated date of birth ');
+						
+									dobUpdate = {"statuscode":200};
+									res.send(dobUpdate);
+								}
+						};
+		});
 		
 }
 
@@ -674,42 +878,35 @@ exports.getAccountDetails = function(req,res){
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
-		var getCart = "Select * from cart where username = ('"+req.session.username+"')";
-		
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
+
+		mongo.connect(mongoURL, function(){
+
+		var coll_users = mongo.collection('users');
+
+		coll_users.find({username:req.session.username}).toArray(function(err, user) {
+			if(err) {
 				throw err;
+			} else {
+
+				cart = user[0].cart.length;
+
+				winston_logger.log('info', 'user - '+req.session.username+' - redirects to view account details');
+
+				var userinfo = user[0];
+
+
+				ejs.renderFile('./views/account.ejs', { title: 'My Account', username: req.session.username, firstname: req.session.firstname, cart : cart, lastlogin: req.session.lastlogin, user : userinfo   } , function(err, result) {
+				if (!err) {	
+					res.end(result);
+				}
+				else {
+					res.end('An error occurred');
+					console.log(err);
+				}
+			});
 			}
-			else{	
-					cart = cartdetails.length;
-					
-					var getUser = "Select * from users where username = '"+req.session.username+"'";
-					
-					winston_logger.log('info', 'user - '+req.session.username+' - redirects to view account details');
-					
-					mysql.fetchData(function(err, userdetails){
-						if(err){
-							throw err;
-						}
-						else{	
-							
-							var str = JSON.stringify(userdetails[0]);
-							var userinfo = JSON.parse(str);
-							
-							ejs.renderFile('./views/account.ejs', { title: 'My Account', username: req.session.username, firstname: req.session.firstname, cart : cart, lastlogin: req.session.lastlogin, user : userinfo   } , function(err, result) {
-								if (!err) {	
-									res.end(result);
-								}
-								else {
-									res.end('An error occurred');
-									console.log(err);
-								}
-							});
-							
-						}
-					},getUser);
-			}
-		},getCart);
+		});	
+		});
 		
 	}else{
 		res.redirect('/');
@@ -726,167 +923,251 @@ exports.checkout = function(req,res){
 		
 		console.log("checkout for ",req.session.username)
 		
-		var getCart = "select cart.*, items.seller_username, items.price from cart inner join items on cart.item_code = items.item_code where cart.username = '"+req.session.username+"'";
-		var products;
-		var totalPriceBuyer = 0;
-		
-		mysql.fetchData(function(err,results){
-			if(err){
-				throw err;
-			}
-			else{
-				if(results.length > 0){
-					var str = JSON.stringify(results);
-					products =  JSON.parse(str);
-		
-					var totalCartItems = results.length;
-					var quantitiesUpdate = [];
-				//	var count = 1;
+		mongo.connect(mongoURL, function(){
+
+			var products;
+			var totalPriceBuyer = 0;
+			var checkoutItems = [];
+
+			var coll_users = mongo.collection('users');
+			var coll_items = mongo.collection('items');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, results) {
+				if(err) {
+						throw err;
+					} else {
 					
-					//fetch quantities to be updated and get total price to be deducted from buyer
-					for(i in products){
-						totalPriceBuyer = totalPriceBuyer + (products[i].price * products[i].quantity)
-						json = {"item_code":products[i].item_code, "quantity": products[i].quantity}
-						quantitiesUpdate.push(json);
-					}
+					if(results.length > 0){
+						console.log("found user")
+						var user = results[0];
+						var cart = results[0].cart;
+						var itemsInCart = [];
 						
-					var sellers = [];
-					
-					for(i in products)
-					{
-						var amt = products[i].price * products[i].quantity;
-						console.log("i is "+i+" amount is "+amt);
-						console.log(" seller is ", products[i].seller_username)
-						var exists = 0; var index;
-						for(x in sellers)
-						{
-							if(sellers[x].seller == products[i].seller_username)
-							{	
-								console.log("already exists")
-								exists = 1;
-								index = x;
-							}
-						}
-						
-						if(exists)
-						{
-							sellers[index].amount = sellers[index].amount + amt;
-						}
-						else
-						{
-							var json = { "seller" : products[i].seller_username, "amount" : amt}
-							sellers.push(json)
-						}
-					}	
-					
-					//get order id to insert
-					var orderid;
-					var getMaxOrder = "select max(order_id) as order_id from orders";
-					mysql.fetchData(function(err,results){
-						if(err){
-							throw err;
-						}
-						else{
-							console.log("max order id")
-							console.log(results);
+						if(cart.length > 0){
+							console.log("cart has")
+							for(i in cart)
+								itemsInCart.push(Number(cart[i].item_code))
 							
-							if(results[0].order_id == null)
-								orderid = 0;
-							else
-								orderid = (results[0].order_id) + 1;
 							
-							var currentDate = new Date();
-						
-							
-							for(i in products){
-							var post  = {order_id: orderid, item_code: products[i].item_code, quantity: products[i].quantity, price: products[i].price, seller_username: products[i].seller_username, buyer_username: products[i].username, orderdate: currentDate};
-									var table = 'orders';
-									
-									mysql.insertRecord(function(err,results){
-										
-										if(err){
-											throw err;
-										}
-										else
-										{
-										
-											//update quantities in items table
-											for(item in quantitiesUpdate){
-												var updateQuantity = "Update items set quantity = CASE WHEN quantity > "+quantitiesUpdate[item].quantity+" THEN quantity - "+quantitiesUpdate[item].quantity+" ELSE quantity END where item_code = "+quantitiesUpdate[item].item_code;
-													
-												 mysql.updateData(function(err,results){
-														if(err){
-															throw err;
-														}
-														else{
-															
-														}  },updateQuantity);
-												
+							coll_items.find({   item_code: { $in: itemsInCart  }    }).toArray(function(err, items) {	
+								if(err) {
+									throw err;
+								} else {
+
+									//fetch quantities to be updated and get total price to be deducted from buyer
+									var cartItemDetails = [];
+									for(i in cart){
+										for(j in items){
+											if(Number(items[j].item_code) == Number(cart[i].item_code)){
+												var price = Number(cart[i].quantity) * Number(items[j].price)
+												json = {"item_code": cart[i].item_code, "quantity": cart[i].quantity, "price": price}
+												cartItemDetails.push(json);
 											}
-											
-												//update buyers account
-										var updateQuerybuyer = "Update users set account = account - "+totalPriceBuyer+" where username = '"+req.session.username+"'";
-
-												 mysql.updateData(function(err,results){
-														if(err){
-															throw err;
-														}
-														else{
-															
-														}  },updateQuerybuyer);
-												 
-												 
-											//update sellers accounts
-												 for(x in sellers)
-													{
-													 	var updateQueryseller = "Update users set account = account + "+sellers[x].amount+" where username = '"+sellers[x].seller+"'";
-													 	
-													 	mysql.updateData(function(err,results){
-													 		
-														if(err){
-															throw err;
-														}
-														else{
-															
-														}  },updateQueryseller); 
-												 
-													} 
-												
-												//delete from cart
-												var deleteQuery = "Delete from cart where username = '"+req.session.username+"'";
-												
-												  mysql.deleteData(function(err,results){
-														if(err){
-															throw err;
-														}
-														else{
-														
-															
-														}  },deleteQuery);
-										} 
-									},post,table);
-							
+										}
 									}
-							
-							winston_logger.log('info', 'Cart for user - '+req.session.username+' - processed; monetory transactions completed and inventory updated');
-							
-							ejs.renderFile('./views/paymentSuccess.ejs', { title: 'Congratulations'  } , function(err, result) {
-								if (!err) {	
-									res.end(result);
-								}else {
-									res.end('An error occurred');
-									console.log(err);
+									
+									var sellers = [];
+									
+									//fetch account to be updated for each seller
+									for(i in cartItemDetails){
+										for(j in items){
+											if(Number(items[j].item_code) == Number(cartItemDetails[i].item_code)){
+												var exists = 0; var index;
+												for(x in sellers)
+												{
+													if(sellers[x].seller == items[j].seller_username)
+													{	
+														console.log("already exists")
+														exists = 1;
+														index = x;
+													}
+												}
+												
+												if(exists)
+												{
+													sellers[index].amount = sellers[index].amount + amt;
+												}else{
+													var json = { "seller" : items[j].seller_username, "amount" : cartItemDetails[i].price}
+													sellers.push(json)
+												}	
+											}
+										}
+									}
+									
+									console.log("sellers")
+									console.log(sellers)
+									
+									//get order id to insert
+									var orderid;
+									var maxOrderId = 1;
+									
+									if(user.orders.length > 0){
+										for(i in user.orders){
+											if(Number(user.orders[i].orderid) > maxOrderId)
+												maxOrderId = Number(user.orders[i].orderid);
+										}
+										orderid = maxOrderId + 1;
+									}else{
+										orderid = 1;
+									}
+									
+									//create a new order
+									var currentDate = new Date();
+									var orderdate = dateformat(currentDate,"yyyy-mm-dd HH:MM:ss");
+									var orderdate = dateformat(currentDate,"yyyy-mm-dd HH:MM:ss");
+									var orders = [];
+								
+									for(x in user.orders){
+										orders.push(user.orders[x])
+									}
+									
+									console.log("cartdetails")
+									console.log(cartItemDetails)
+									for(i in cartItemDetails){
+										for(j in items){
+											if(Number(items[j].item_code) == Number(cartItemDetails[i].item_code)){
+												json = {"orderid":orderid, "item_code":items[j].item_code, "orderdate":orderdate, "seller_username":items[j].seller_username, "buyer_username":req.session.username, "quantity":cartItemDetails[i].quantity, "bid":items[j].bid, "price":items[j].price}
+												orders.push(json);
+											}
+										}
+									}
+									
+									coll_users.update(
+											{
+												username: req.session.username
+											},
+											{
+												$set: {
+													orders : orders
+													  }
+											}), function(err, user){ 
+												if(err) {
+													throw err;
+												} else {
+													//new order placed successfully
+													console.log("new order added")
+												}
+										};
+											
+										//update quantities in items table
+										for(i in cartItemDetails){
+											for(j in items){
+												if(Number(items[j].item_code) == Number(cartItemDetails[i].item_code)){
+													var new_qty = Number(items[j].quantity) - Number(cartItemDetails[i].quantity) 
+													
+													if(new_qty > 0){
+														
+														coll_items.update(
+														{
+															item_code: Number(cartItemDetails[i].item_code)
+														},
+														{
+														$set: {
+															quantity : new_qty
+														 }
+														}),function(err, user){ 
+														if(err) {
+															throw err;
+														} else {
+														//	console.log("item quantity updated successfully");
+														};
+														}
+													}else{
+														console.log("new quantity will go lower than 0");
+													}
+												}
+											}
+										}
+										
+										//update sellers account
+										for(i in sellers){
+												
+											coll_users.update(
+													{
+														username: sellers[i].seller
+													},
+													{
+													$inc: {
+														account : Number(sellers[i].amount)
+													 }
+													})
+												
+													console.log("seller account updated")		
+										}	
+										
+									//update buyers account
+									
+									var total = 0;
+									
+									for(i in cartItemDetails){
+										total = total + cartItemDetails[i].price
+									}
+										
+									coll_users.update(
+											{
+												username: req.session.username
+											},
+											{
+											$inc: {
+												account : Number(0) - Number(total)
+											 }
+											}),function(err,user){
+										if(err){
+											
+										}else{
+											console.log("buyer account deducted successfully")
+										}
+									}
+										
+									//delete from cart	
+									coll_users.update(
+											{
+												username: req.session.username
+											},
+											{
+											$set: {
+												cart : []
+											 }
+											}),function(err,user){
+										if(err){
+											
+										}else{
+											console.log("cart deleted")
+										}
+									}
+									
+									
+									winston_logger.log('info', 'Cart for user - '+req.session.username+' - processed; monetory transactions completed and inventory updated');
+									
+									ejs.renderFile('./views/paymentSuccess.ejs', { title: 'Congratulations'  } , function(err, result) {
+										if (!err) {	
+											res.end(result);
+										}else {
+											res.end('An error occurred');
+											console.log(err);
+										}
+									});	
+										
+										
 								}
-							});	
-						
+								
+							});
+							
+						}else{
+							console.log("No items in cart to checkout");
 						}
-					},getMaxOrder);
-			
+						
+					}else{
+						console.log("no such user");
 					}
-				else {
-						console.log("No products");
-
-					}   }  },getCart);
+										
+					
+					
+				}
+			});
+		});
+		
+		
 	}
 	else
 	{
@@ -900,26 +1181,37 @@ exports.viewItem = function(req,res){
 		
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 		
-		var item = req.param("item");
-		var currentItem;
-		var getItem =  "select * from items where item_code="+item;
+		console.log("reached in item fetch")
 		
-		mysql.fetchData(function(err,results){
-			if(err){
-				throw err;
-			}
-			else{
-				if(results.length > 0){	
-					currentItem = results[0];
-					req.session.item = currentItem;
-					
-					winston_logger.log('info', 'User - '+req.session.username+' - clicks to view item '+req.session.item.item_code);
-					
-					itemResponse={"item":currentItem, "statuscode":200}
-					res.send(itemResponse);
-				}	
-			}
-		}, getItem);
+		var item = req.param("item");
+	
+		var currentItem;
+		
+		mongo.connect(mongoURL, function(){
+			var coll_items = mongo.collection('items');
+			
+			coll_items.find({item_code: Number(item)}).toArray(function(err, items) {
+				
+				if(err){
+					throw err;
+				}
+				else{
+					if(items.length > 0){	
+
+						console.log("fetched items")
+						
+						currentItem = items[0];
+						req.session.item = currentItem;
+						
+						winston_logger.log('info', 'User - '+req.session.username+' - clicks to view item '+req.session.item.item_code);
+						
+						console.log("sending response from viewItem");
+						itemResponse={"item":currentItem, "statuscode":200}
+						res.send(itemResponse);
+					}
+				}
+			});
+		});
 	}
 	else
 	{
@@ -932,105 +1224,116 @@ exports.viewItemDetails = function(req,res){
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 				
-		var getCart = "Select * from cart where username = ('"+req.session.username+"')";
-		
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
-				throw err;
-			}
-			else{
-					cart = cartdetails.length;
+		mongo.connect(mongoURL, function(){
+			var coll_users = mongo.collection('users');
+			
+			console.log("reached in viewItem details");
+			
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+
+				if(err) {
+					throw err;
+				} else {
 					
+				cart = user[0].cart.length;
+
+				console.log("cart length is "+cart);
+				
+				var cartarr = [];
+
+				for(i in user[0].cart){
+					cartarr.push(user[0].cart.item_code);
+				}
+
+				var coll_items = mongo.collection('items');
+
+				coll_items.find({item_code:req.session.item.item_code}).toArray(function(err, items) {
+					if(err) {
+						throw err;
+					} else {
+						
 					var condition;
 					var displayCart;
-			
+					
 					switch(req.session.item.condition_prod){
-					case 0: condition = 'New with box';
-							break;
-							
-					case 1: condition = 'New without box';
-							break;
-					
-					case 2: condition = 'Used';
-							break;
-					
-					case 3: condition = 'Some parts not functioning';
-							break;
-					
-					default: console.log("unknown condition");
-							break;
+						case 0: condition = 'New with box';
+								break;
+										
+						case 1: condition = 'New without box';
+								break;
+						
+						case 2: condition = 'Used';
+								break;
+								
+						case 3: condition = 'Some parts not functioning';
+								break;
+								
+						default: console.log("unknown condition");
+								break;
 					}
-					
-					//to check if the item is already in user cart
-					var cartUserCombo = "Select * from cart where username = '"+req.session.username+"' and item_code = "+req.session.item.item_code;
-					
-					mysql.fetchData(function(err,results){
-						if(err){
-							throw err;
+
+					var cartPresent = false;
+
+					for(i in user[0].cart){
+						if(user[0].cart[i].item_code == req.session.item.item_code){
+							cartPresent = true; 
 						}
-						else{
-							
-							if(results.length > 0)
-								{
-									displayCart = 0;
-								}
-								else{
-									displayCart = 1;
-								}
-							
-							var getBids = "Select bidding.*, items.price from bidding inner join items on items.item_code = bidding.item_code where bidding.item_code="+req.session.item.item_code;
-							var bidCount;
-							
-							mysql.fetchData(function(err,results){
-								if(err){
-									throw err;
-								}
-								else{
-									var maxBid = 0
-									
-									if(results.length > 0)
-									{
-										
-										bidCount = results.length;
-										
-										for(i in results)
-										{
-											if(results[i].bid_amount > maxBid)
-												maxBid = results[i].bid_amount;
-										}
-										
-										//timer trial
-										var days, hours;
-										 var deadline = dateformat(req.session.item.bid_endtime,"yyyy-mm-dd HH:MM:ss");
-										 getBidEndTime(deadline);
-										 function getBidEndTime(bidendtime){
-											  var totalTime = Date.parse(bidendtime) - Date.parse(new Date());
-											  minutes = Math.floor( (totalTime/1000/60) % 60 );
-											  hours = Math.floor( (totalTime/(1000*60*60)) % 24 );
-											  days = Math.floor( totalTime/(1000*60*60*24) );
-										 }
-										//timer end
-									}else{
-										bidCount = 0;
-										maxBid = req.session.item.price;
-									}
-										
-									winston_logger.log('info', 'User - '+req.session.username+' - clicks to view item '+req.session.item.item_code);
-									
-									ejs.renderFile('./views/itemDetails.ejs', { title: 'View Item', days: days, hours: hours, item: req.session.item, username: req.session.username, firstname: req.session.firstname, cart: cart, condition: condition, displayCart: displayCart, bids: bidCount, maxBid: maxBid  } , function(err, result) {
-										if (!err) {	
-											res.end(result);
-										}else {
-											res.end('An error occurred');
-											console.log(err);
-										}
-									});	
-								}
-							}, getBids);
+					}
+
+					if(cartPresent){
+						displayCart = 0;
+					}else{
+						displayCart = 1;
+					}	
+
+					var maxBid = 0
+
+					var bidCount;
+					
+					if(req.session.item.bids.length > 0){
+
+						bidCount = req.session.item.bids.length;
+
+						for(i in items.bids)
+						{
+							if(i.bid_amount > maxBid)
+							maxBid = i.bid_amount;
 						}
-					},cartUserCombo);
+
+						//timer trial
+						var days, hours;
+						var deadline = dateformat(req.session.item.bid_endtime,"yyyy-mm-dd HH:MM:ss");
+						getBidEndTime(deadline);
+						function getBidEndTime(bidendtime){
+							var totalTime = Date.parse(bidendtime) - Date.parse(new Date());
+							minutes = Math.floor( (totalTime/1000/60) % 60 );
+							hours = Math.floor( (totalTime/(1000*60*60)) % 24 );
+							days = Math.floor( totalTime/(1000*60*60*24) );
+						}
+						//timer end
+
+					}else{
+						bidCount = 0;
+						maxBid = req.session.item.price;
+					}
+
+
+					winston_logger.log('info', 'User - '+req.session.username+' - clicks to view item '+req.session.item.item_code);
+											
+					ejs.renderFile('./views/itemDetails.ejs', { title: 'View Item', days: days, hours: hours, item: req.session.item, username: req.session.username, firstname: req.session.firstname, cart: cart, condition: condition, displayCart: displayCart, bids: bidCount, maxBid: maxBid  } , function(err, result) {
+						if (!err) {	
+							res.end(result);
+						}else {
+							res.end('An error occurred');
+							console.log(err);
+						}
+					});	
+					}
+				});
 				}
-		},getCart);
+			});
+
+		});	
 	}
 	else
 	{
@@ -1064,44 +1367,32 @@ exports.getBidDetails = function(req,res){
 		
 		var cart;
 		
-		var getCart = "Select * from cart where username = ('"+req.session.username+"')";
-		
-		mysql.fetchData(function(err,cartDetails){
-			if(err){
-				throw err;
-			}
-			else{
-				cart = cartDetails.length;
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
 				
-				var bidQuery = "Select * from bidding where item_code="+req.session.item.item_code+" order by bid_amount desc";
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+
+				if(err) {
+					throw err;
+				} else {
+					cart = user[0].cart.length;
+					var coll_items = mongo.collection('items');
 				
-				mysql.fetchData(function(err,results){
-					if(err){
-						throw err;
-					}
-					else{
-						var str = JSON.stringify(results);
+					coll_items.find({item_code: req.session.item.item_code}).toArray(function(err, bidDetails) {
+						if(err) {
+							throw err;
+						} else {
+							var bids = bidDetails[0].bids;
+
+							for(i in bids){
+								var day=dateformat(bids[i].bid_time, "yyyy-mm-dd HH:MM:ss");
+								bids[i].bid_time = day;
+							}
+
+							winston_logger.log('info', 'User - '+req.session.username+' - views bids for item '+req.session.item.item_code);
 						
-						var bids = JSON.parse(str);
-						
-					/**	var maxBid = 0;
-						
-						for(i in bids)
-						{
-							if(bids[i].bid_amount > maxBid)
-								maxBid = bids[i].bid_amount;
-						} **/
-						
-						console.log("Bids are: ")
-						for(i in bids){
-							console.log(bids[i].bid_amount);
-							var day=dateformat(bids[i].bid_time, "yyyy-mm-dd HH:MM:ss");
-							bids[i].bid_time = day;
-						}
-						
-						winston_logger.log('info', 'User - '+req.session.username+' - views bids for item '+req.session.item.item_code);
-						
-						ejs.renderFile('./views/bidDetails.ejs', { title: 'Item Bid History', item: req.session.item, username: req.session.username, firstname: req.session.firstname, cart: cart, bids: bids  } , function(err, result) {
+							ejs.renderFile('./views/bidDetails.ejs', { title: 'Item Bid History', item: req.session.item, username: req.session.username, firstname: req.session.firstname, cart: cart, bids: bids  } , function(err, result) {
 							if (!err) {
 								res.end(result);
 							}
@@ -1109,12 +1400,12 @@ exports.getBidDetails = function(req,res){
 								res.end('An error occurred');
 								console.log(err);
 							}
-						});		
-					}
-				}, bidQuery);
-				
-			}
-		}, getCart);
+						});	
+						}
+					});
+				}
+			});
+		});	
 	}
 	else
 	{
@@ -1129,40 +1420,63 @@ exports.addBid = function(req,res){
 	
 	var bid = req.param("bid");
 	
-			var getMaxBid = "Select max(bid_amount) as bid from bidding where item_code = "+req.session.item.item_code;
+	var maxBid = 0;
+	var maxBidUser;
+	
+	var bidstoInsertBack = [];
+	
+	for(i in req.session.item.bids){
+		
+		bidstoInsertBack.push(req.session.item.bids[i]);
+		
+		if(req.session.item.bids[i].bid_amount > maxBid){
+			maxBid = req.session.item.bids[i].bid_amount;
+			maxBidUser = req.session.item.bids[i];
+		}
+
+		console.log("bids are - 1")
+		console.log(bidstoInsertBack)
+
+	}
+	
+	if(bid > maxBid && bid > req.session.item.price){
+		var currentTime = new Date();
+		
+		console.log("date is "+currentTime)
 			
-			mysql.fetchData(function(err,maxBidDetails){
-				if(err){
-					throw err;
-				}
-				else{
-					if(bid > maxBidDetails[0].bid && bid > req.session.item.price){
-						
-						var currentTime = new Date();
-						
-						var post  = {bid_amount: bid, bid_username: req.session.username, item_code: req.session.item.item_code, bid_time: currentTime };
-						var table = 'bidding';
-						
-						mysql.insertRecord(function(err,results){
-							if(err){
-								throw err;
-							}
-							else
-							{
-								console.log("bid added successfully ");
-								
-								winston_logger.log('info', 'User - '+req.session.username+' - adds bid for item '+req.session.item.item_code);
-								
-								bidResponse={"statuscode":200}
-								res.send(bidResponse);
-							} 
-						},post,table); 
-					}else{
-						bidResponse={"statuscode":201}
-						res.send(bidResponse);
-					}
-				}},getMaxBid);
+		
+		var newBid = {
+			"bid_username": req.session.username,
+			"bid_amount": bid,
+			"bid_time": dateformat(currentTime, "yyyy-mm-dd HH:MM:ss"),
+		}
+		
+		bidstoInsertBack.push(newBid);
+
+		console.log("bids are")
+		console.log(bidstoInsertBack)
+		
+		mongo.connect(mongoURL, function(){
+
+			var coll_items = mongo.collection('items');
 			
+			coll_items.update(
+					{
+						item_code: req.session.item.item_code
+					},
+					{
+						$set: {
+							bids : bidstoInsertBack
+							  }
+					}), function(err, user){ 
+						if(err) {
+							throw err;
+						} else {
+							//console.log("new bid added successfully");
+						}
+				};
+		});
+	}
 	}else{
 		res.redirect('/');
 	}
@@ -1213,72 +1527,81 @@ exports.submitSignup = function(req,res){
 	}
 	else
 	{
-		var checkEmail = "select * from users where email='"+email+"'";
-		
-	  mysql.fetchData(function(err,results){
-			if(err){
-				throw err;
-			}
-			else{
-				if(results.length > 0){	
-					console.log("email exists");
-					signupResponse={"statuscode":401}
-					res.send(signupResponse);
-				}
-				else
-				{		
-					username = (firstname.toLowerCase().substring(0,4)) + (lastname.toLowerCase().substring(0,5));
-					var checkUsername =  "select * from users where username='"+username+"'";
-					
-					mysql.fetchData(function(err,results){
-						if(err){
-							throw err;
-						}
-						else{
-							if(results.length > 0){	
-								console.log("username exists");
-								username = username + Math.floor((Math.random() * 100) + 1);
-							}
+		console.log("email is "+email);
+		console.log("firstname is "+firstname);
+	
+		 mongo.connect(mongoURL, function(){
+			 	var coll_users = mongo.collection('users');
+
+			 	coll_users.find({email: email}).toArray(function(err, email_data) {
+							if(email_data.length > 0) {
+								console.log("email exists");
+								
+								signupResponse={"statuscode":401}
+								res.send(signupResponse);
+
+							} else {
+								var username = (firstname.toLowerCase().substring(0,4)) + (lastname.toLowerCase().substring(0,5));
 							
-								password = encrypt(password);
-								
-								console.log("new user password will be stored in database with encryption : ",password)
-								
-								var current = new Date();
-								var newLogin = dateformat(current, "yyyy-mm-dd HH:MM:ss");
-								
-								var post  = {firstname: firstname, lastname: lastname, password: password, email: email, mobile: mobile, username:username, last_login: newLogin };
-								var table = 'users';
-								
-								mysql.insertRecord(function(err,results){
-									
-									if(err){
-										throw err;
-									}
-									else
-									{
-										console.log("user added successfully ",username)
+								coll_users.find({username: username}).toArray(function(err, username_data) {
+										if(err) {	
+											throw err;
+										}else{
+											if(username_data.length > 0){	
+												console.log("username exists");
+												username = username + Math.floor((Math.random() * 100) + 1);
+											}
+
+											password = encrypt(password);
 										
-										req.session.destroy();
-										
-										req.session.username = username;
-										req.session.firstname = firstname;
-										
-										winston_logger.log('info', 'User - '+req.session.username+' - successfully signed up');
-										
-										console.log(" In signup")
-										console.log("session username ", req.session.username)
-										console.log("session firstname ", req.session.firstname)
-										
-									//	signupResponse={"statuscode":200, "username":username}
-										signupResponse={"statuscode":200}
-										res.send(signupResponse);
-									} 
-								},post,table);
-						}
-					}, checkUsername);
-				}
-			}  },checkEmail);
+											var current = new Date();
+											var newLogin = dateformat(current, "yyyy-mm-dd HH:MM:ss");	
+
+											//find maximum _id from users table
+											coll_users.find().sort({_id:-1}).limit(1).toArray(function(err, maxID) {
+												
+												var newID
+												if(maxID.length > 0){
+													var maxID = maxID[0]._id;
+													newID = maxID + 1;	
+												}else{
+													newID = 1;
+												}
+												
+												coll_users.insert({_id : newID, firstname : firstname, lastname : lastname, username: username, password:password, email: email, mobile: mobile, last_login: newLogin, dob: "-", gender: "-", account: 10000, location: "-", items_sold:[], cart: [], orders: []}, function(err, user){  
+													if(err) {     
+														throw err;  
+													} else {     
+														
+													console.log("user added successfully ",username)
+													
+													req.session.destroy();
+													
+													req.session.username = username;
+													req.session.firstname = firstname;
+													
+													console.log("session started ")
+													console.log(req.session.username)
+													console.log(req.session.firstname)
+													
+													winston_logger.log('info', 'User - '+req.session.username+' - successfully signed up');
+													
+													console.log(" In signup")
+													console.log("session username ", req.session.username)
+													console.log("session firstname ", req.session.firstname)
+													
+													signupResponse={"statuscode":200}
+													res.send(signupResponse);
+
+														}  
+												});
+												
+											});
+										}
+								});
+							}
+						});
+			 });		
 	}
 };
 
@@ -1287,18 +1610,23 @@ exports.getSummary = function(req,res){
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 	
-	var getCart = "Select * from cart where username = ('"+req.session.username+"')";
 	var cart;
-	mysql.fetchData(function(err,cartdetails){
-		if(err){
-			throw err;
-		}
-		else{	
-				cart = cartdetails.length;
+	
+		mongo.connect(mongoURL, function(){
+	
+			var coll_users = mongo.collection('users');
 				
-				winston_logger.log('info', 'User - '+req.session.username+' - views account summary');
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+	
+				if(err) {
+					throw err;
+				} else {
+					
+					cart = user[0].cart.length;
+	
+					winston_logger.log('info', 'User - '+req.session.username+' - views account summary');
 				
-				ejs.renderFile('./views/summary.ejs', { title: 'Summary', username: req.session.username, user: req.session.firstname, cart: cart, lastlogin: req.session.lastlogin  } , function(err, result) {
+					ejs.renderFile('./views/summary.ejs', { title: 'Summary', username: req.session.username, user: req.session.firstname, cart: cart, lastlogin: req.session.lastlogin  } , function(err, result) {
 					if (!err) {
 						res.end(result);
 					}
@@ -1307,8 +1635,11 @@ exports.getSummary = function(req,res){
 						console.log(err);
 					}
 				});
-			}
-		},getCart);
+				}
+			});
+		});		
+	
+	
 	}else{
 		res.redirect('/');
 	}	
@@ -1317,52 +1648,98 @@ exports.getSummary = function(req,res){
 exports.getSummaryOrders = function(req,res){
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
-	
-	var getCart = "Select * from cart where username = ('"+req.session.username+"')";
-	var cart;
-	mysql.fetchData(function(err,cartdetails){
-		if(err){
-			throw err;
-		}
-		else{	
-			cart = cartdetails.length;
-			
-			var getOrders = "Select orders.*, items.description,items.item_type,items.seller_username,items.image, items.bid_endtime from orders inner join items on items.item_code = orders.item_code where orders.buyer_username = ('"+req.session.username+"')";
-			
-			mysql.fetchData(function(err,orderdetails){
-				if(err){
+
+		var cart;
+		var customerOrders = [];
+		var display = 0;
+		var summaryOrder = [];
+		var finalorders;
+
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+			var coll_items = mongo.collection('items');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+
+				if(err) {
 					throw err;
-				}
-				else{
-					var display = 0;
-					if(orderdetails.length > 0){
+				} else {
+
+					cart = user[0].cart.length;
+
+					if(user[0].orders.length > 0){
+
 						display = 1;
-						var str = JSON.stringify(orderdetails);
-						var orders = JSON.parse(str);
-						
+						var orders = user[0].orders;
+						var items_codes = [];
+						var orderDetails = [];
+
+
 						for(i in orders){
-							var day=dateformat(orders[i].orderdate, "yyyy-mm-dd hh:MM:ss");
-							orders[i].orderdate =  day;
+							json = {"orderid":orders[i].orderdate, "item_code": Number(orders[i].item_code)}
+							orderDetails.push(json);
+							items_codes.push(Number(orders[i].item_code))
 						}
+
+						coll_items.find({ item_code: { $in: items_codes  }   }).toArray(function(err, items) {
+							if(err) {
+								throw err;
+							} else {
+
+								for(i in items){
+									for(j in orderDetails){
+										if(Number(orderDetails[j].item_code) == Number(items[i].item_code) ){
+
+
+											json = {"item_type":items[i].item_type, "description":items[i].description, "price":items[i].price,
+												"quantity": items[i].quantity, "orderdate":orderDetails[j].orderdate,
+												"bid": items[i].bid, "seller_username":items[i].seller_username, "image":items[i].image}
+
+											summaryOrder.push(json)
+
+										}
+									}
+								}
+
+								var str = JSON.stringify(summaryOrder);
+
+								finalorders =  JSON.parse(str);
+
+								console.log("final orders")
+								console.log(finalorders)
+
+								winston_logger.log('info', 'User - '+req.session.username+' - views account summary for ordered items');
+
+								ejs.renderFile('./views/summaryOrders.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, cart: cart, orders: finalorders, lastlogin: req.session.lastlogin  } , function(err, result) {
+									if (!err) {
+										res.end(result);
+									}
+									else {
+										res.end('An error occurred');
+										console.log(err);
+									}
+								});
+							}
+						});
+
 					}else{
 						display = 0;
+
+						ejs.renderFile('./views/summaryOrders.ejs', { title: 'Summary', display: 0, username: req.session.username, user: req.session.firstname, cart: cart, lastlogin: req.session.lastlogin  } , function(err, result) {
+							if (!err) {
+								res.end(result);
+							}
+							else {
+								res.end('An error occurred');
+								console.log(err);
+							}
+						});
 					}
-					
-					winston_logger.log('info', 'User - '+req.session.username+' - views account summary for ordered items');
-					
-					ejs.renderFile('./views/summaryOrders.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, cart: cart, orders: orders, lastlogin: req.session.lastlogin  } , function(err, result) {
-						if (!err) {
-							res.end(result);
-						}
-						else {
-							res.end('An error occurred');
-							console.log(err);
-						}
-					});
+
 				}
-			},getOrders);
-		}
-	},getCart);
+			});
+		});
 	}else{
 		res.redirect('/');
 	}
@@ -1373,58 +1750,100 @@ exports.getSummarySold = function(req,res){
 	
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
-		
-		var getCart = "Select * from cart where username = ('"+req.session.username+"')";
+
+
 		var cart;
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
-				throw err;
-			}
-			else{	
-					cart = cartdetails.length;
-					
-					var getSold = "Select orders.*, items.image, items.quantity as 'available', items.item_type, items.description, items.price as 'itemprice', items.insert_time from orders inner join items on items.item_code = orders.item_code where orders.seller_username = '"+req.session.username+"'";
-					
-					mysql.fetchData(function(err,soldDetails){
-						if(err){
-							throw err;
+		var customerSold = [];
+		var display = 0;
+		var summarySold = [];
+		var finalSold;
+
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+			var coll_items = mongo.collection('items');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+
+				if(err) {
+					throw err;
+				} else {
+
+					cart = user[0].cart.length;
+
+					if(user[0].items_sold.length > 0){
+
+						display = 1;
+						var sold = user[0].items_sold;
+						var items_codes = [];
+
+						for(i in sold){
+
+							items_codes.push(Number(sold[i].item_code))
 						}
-						else{
-							var display = 0;
-							if(soldDetails.length > 0){
-								display = 1;
-								var str = JSON.stringify(soldDetails);
-								var sold = JSON.parse(str);
-								
-								for(i in sold){
-									var order=dateformat(sold[i].orderdate, "yyyy-mm-dd hh:MM:ss");
-									sold[i].orderdate =  order;
-									
-									var insert=dateformat(sold[i].insert_time, "yyyy-mm-dd hh:MM:ss");
-									sold[i].insert_time =  insert;
-									
-									var bidend=dateformat(sold[i].bid_endtime, "yyyy-mm-dd hh:MM:ss");
-									sold[i].bid_endtime =  bidend;
+
+						coll_items.find({ item_code: { $in: items_codes  }   }).toArray(function(err, items) {
+							if(err) {
+								throw err;
+							} else {
+
+								for(i in items){
+									for(j in items_codes){
+										console.log("here")
+										if(items_codes[j] == items[i].item_code ){
+
+											console.log("here - 1")
+											json = {"item_type":items[i].item_type, "description":items[i].description, "price":items[i].price,
+												"quantity": 1, "insert_time":items[i].insert_time,
+												"bid": items[i].bid, "image":items[i].image}
+
+											summarySold.push(json)
+
+										}
+									}
 								}
-							}else{
-								display = 0;
+
+								var str = JSON.stringify(summarySold);
+
+								finalSold =  JSON.parse(str);
+
+								winston_logger.log('info', 'User - '+req.session.username+' - views account summary for sold items');
+
+								ejs.renderFile('./views/summarySold.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart, sold: finalSold  } , function(err, result) {
+									if (!err) {
+										res.end(result);
+									}
+									else {
+										res.end('An error occurred');
+										console.log(err);
+									}
+								});
 							}
-							
-							winston_logger.log('info', 'User - '+req.session.username+' - views account summary for sold items');
-						
-							ejs.renderFile('./views/summarySold.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart, sold: sold  } , function(err, result) {
-								if (!err) {
-									res.end(result);
-								}
-								else {
-									res.end('An error occurred');
-									console.log(err);
-								}
-							});
-						}
-					},getSold);
-			}
-		},getCart);
+						});
+
+					}else{
+						display = 0;
+
+						console.log("cart is ")
+						console.log(cart)
+
+						ejs.renderFile('./views/summarySold.ejs', { title: 'Summary', display: 0, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart  } , function(err, result) {
+							if (!err) {
+								res.end(result);
+							}
+							else {
+								res.end('An error occurred');
+								console.log(err);
+							}
+						});
+					}
+
+
+				}
+			});
+		});
+
+
 	}else{
 		res.redirect('/');
 	}
@@ -1433,62 +1852,81 @@ exports.getSummarySold = function(req,res){
 exports.getSummaryActive = function(req,res){
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
-		
-		var getCart = "Select * from cart where username = ('"+req.session.username+"')";
+
 		var cart;
-		mysql.fetchData(function(err,cartdetails){
-			if(err){
-				throw err;
-			}
-			else{	
-					cart = cartdetails.length;
-					
-					var getActive = "Select * from items where seller_username = '"+req.session.username+"' and quantity > 0";
-					
-					mysql.fetchData(function(err,activeDetails){
-						if(err){
+		var customerSold = [];
+		var display = 0;
+		var summaryActive = [];
+		var finalActive;
+
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+			var coll_items = mongo.collection('items');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+
+				if(err) {
+					throw err;
+				} else {
+
+					cart = user[0].cart.length;
+
+					coll_items.find({ seller_username: req.session.username }).toArray(function(err, items) {
+						if(err) {
 							throw err;
-						}
-						else{
-							var display;
-							
-							if(activeDetails.length > 0){
+						} else {
+
+							if(items.length > 0){
+
 								display = 1;
-								var str = JSON.stringify(activeDetails);
-								var active = JSON.parse(str);
-								
-								for(i in active){
-									var insert=dateformat(active[i].insert_time, "yyyy-mm-dd hh:MM:ss");
-									if(active[i].bid=='1'){
-										var bidend=dateformat(active[i].bid_endtime, "yyyy-mm-dd hh:MM:ss");
-										active[i].bid_endtime =  bidend;
-									}
-									active[i].insert_time =  insert;
+
+								for(i in items){
+									json = {"item_type":items[i].item_type, "description":items[i].description, "price":items[i].price,
+										"quantity": items[i].quantity, "insert_time":items[i].insert_time,
+										"bid": items[i].bid, "image":items[i].image}
+
+									summaryActive.push(json)
 								}
+
+								var str = JSON.stringify(summaryActive);
+
+								finalActive =  JSON.parse(str);
+
+								winston_logger.log('info', 'User - '+req.session.username+' - views account summary for active items');
+
+								ejs.renderFile('./views/summaryActive.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart, active: finalActive } , function(err, result) {
+									if (!err) {
+										res.end(result);
+									}
+									else {
+										res.end('An error occurred');
+										console.log(err);
+									}
+								});
 							}else{
 								display = 0;
+
+								ejs.renderFile('./views/summaryActive.ejs', { title: 'Summary', display: 0, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart } , function(err, result) {
+									if (!err) {
+										res.end(result);
+									}
+									else {
+										res.end('An error occurred');
+										console.log(err);
+									}
+								});
 							}
-						
-							winston_logger.log('info', 'User - '+req.session.username+' - views account summary for active items to sell');
-							
-							ejs.renderFile('./views/summaryActive.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart, active: active  } , function(err, result) {
-								if (!err) {
-									res.end(result);
-								}
-								else {
-									res.end('An error occurred');
-									console.log(err);
-								}
-							});
-							
-							
+
 						}
-					},getActive);
-					
-			}
-		},getCart);
-		
-		
+					});
+
+				}
+			});
+		});
+
+
+
 	}else{
 		res.redirect('/');
 	}
@@ -1498,59 +1936,88 @@ exports.getSummaryBids = function(req,res){
 	
 	if(req.session.username){
 		res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
-	
-	var getCart = "Select * from cart where username = ('"+req.session.username+"')";
-	var cart;
-	mysql.fetchData(function(err,cartdetails){
-		if(err){
-			throw err;
-		}
-		else{	
-				cart = cartdetails.length;
-				
-				var getBids = "Select bidding.*, items.description,items.item_type,items.price,items.seller_username,items.image, items.bid_endtime from bidding inner join items on items.item_code = bidding.item_code where bidding.bid_username = ('"+req.session.username+"')";
-				
-				mysql.fetchData(function(err,bidDetails){
-					if(err){
-						throw err;
-					}
-					else{
-						var display = 0;
-						if(bidDetails.length > 0){
-							display = 1;
-							var str = JSON.stringify(bidDetails);
-							var bids = JSON.parse(str);
-							
-							for(i in bids){
-								var day=dateformat(bids[i].bid_time, "yyyy-mm-dd hh:MM:ss");
-								bids[i].bid_time =  day;
+
+		var cart;
+		var display = 0;
+		var summaryBids = [];
+		var finalBids;
+
+		mongo.connect(mongoURL, function(){
+
+			var coll_users = mongo.collection('users');
+			var coll_items = mongo.collection('items');
+
+			coll_users.find({username:req.session.username}).toArray(function(err, user) {
+
+				if(err) {
+					throw err;
+				} else {
+
+					cart = user[0].cart.length;
+
+					coll_items.find({ bid: 1 }).toArray(function(err, items) {
+						if(err) {
+							throw err;
+						} else {
+
+							if(items.length > 0){
+
+								display = 1;
+
+								var bids = [];
+
+								for(i in items){
+									for(j in items[i].bids){
+										if(items[i].bids[j].bid_username == req.session.username){
+
+											json = {"item_type":items[i].item_type, "description":items[i].description, "price":items[i].price,
+												"bid_amount": items[i].bids[j].bid_amount, "seller_username": items[i].seller_username, "bid_time":items[i].bids[j].bid_time,
+												 "image":items[i].image}
+
+											summaryBids.push(json)
+										}
+									}
+								}
+
+								var str = JSON.stringify(summaryBids);
+
+								finalBids =  JSON.parse(str);
+
+
+								winston_logger.log('info', 'User - '+req.session.username+' - views account summary for active items');
+
+								ejs.renderFile('./views/summaryBids.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart, bids: finalBids } , function(err, result) {
+									if (!err) {
+										res.end(result);
+									}
+									else {
+										res.end('An error occurred');
+										console.log(err);
+									}
+								});
+							}else{
+								display = 0;
+
+								ejs.renderFile('./views/summaryBids.ejs', { title: 'Summary', display: 0, username: req.session.username, user: req.session.firstname, lastlogin: req.session.lastlogin, cart: cart } , function(err, result) {
+									if (!err) {
+										res.end(result);
+									}
+									else {
+										res.end('An error occurred');
+										console.log(err);
+									}
+								});
 							}
-							
-							for(x in bids){
-								var day=dateformat(bids[x].bid_endtime, "yyyy-mm-dd hh:MM:ss");
-								bids[x].bid_endtime =  day;
-							}
-						}else{
-							display = 0;
+
 						}
-						
-						winston_logger.log('info', 'User - '+req.session.username+' - views account summary for current bids');
-						
-						ejs.renderFile('./views/summaryBids.ejs', { title: 'Summary', display: display, username: req.session.username, user: req.session.firstname, cart: cart, bids: bids  } , function(err, result) {
-							if (!err) {
-								res.end(result);
-							}
-							else {
-								res.end('An error occurred');
-								console.log(err);
-							}
-						});
-						
-					}
-				}, getBids);
-				
-		}
-	},getCart);	
+					});
+
+
+
+				}
+			});
+		});
+
 	}else{
 		res.redirect('/');
 	}

@@ -16,13 +16,49 @@
   
   <body ng-app="user" ng-controller="payment">
 	
-		<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/EBay_logo.svg/2000px-EBay_logo.svg.png" alt="ebay-logo" style="width:150px;height:50px;">
+<div class="row" style="margin: 10px;">
+	<div class="btn-group">
+		<div class="btn-group">
+  			<button type="button" class="btn btn-default">Hi <b><%- firstname%></b>!</button>
+ 			<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+   				<span class="caret"></span>
+  			</button>
+  			<ul class="dropdown-menu" role="menu">
+	    		<li><a href="/myAccount">Account Settings</a></li>
+	    		<li><a href="/logout">Sign Out</a></li>
+  			</ul>
+		</div> <!-- button group 1 -->
+		<button type="button"class="btn btn-default" onclick="window.location.href='/sell'">Sell</button>
+ 	</div><!-- button group 2 -->
+&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Last sign in <%- lastlogin %>
+	
+		<div class="btn-group pull-right" style="width:150px">
+			<button type="button"class="btn btn-default" onclick="window.location.href='/summary'">My eBay</button>
+			<button type="button"class="btn btn-default" onclick="window.location.href='/cart'">
+			
+			<span class="glyphicon glyphicon-shopping-cart" style="color:  #FFFFF; font-size: 15px"><span class="badge" style="color: #ffffff; background-color: #e69500; font-size: 10px"><%- cart%></span></span>
+			
+			</button>
+		
+		</div><!-- button group pull right -->
 
+</div><!-- row -->
+
+<div class="container" align="center" style="margin=10px;"> 
+	<img src="http://localhost:3000/images/logo.jpg" width="130px" height="50px">
+	<button type="button"class="btn btn-default" onclick="window.location.href='/allproducts'">Shop</button>
+	<input type="text" name="search" placeholder="Search..." maxlength="50" size="100" style="padding: 5px;">
+	<button type="button" style="height: 35px;" class="btn btn-primary"><b>Search</b></button>
+</div>
+	
+	
 		<br>
+		<div class="col-md-3">
+		</div>
 		
-		<div class="col-md-4 well" style="margin: 10px;">
+		<div class="col-md-5 well" style="margin: 10px;">
 		
-		<h3 style="color: #C0C0C0; font-size: 25px"><span class="glyphicon glyphicon-circle-arrow-right" style="color:	#C0C0C0; font-size: 25px"></span>Sign in</h3>
+		<h3 style="color: #C0C0C0; font-size: 25px"><span class="glyphicon glyphicon-circle-arrow-right" style="color:	#C0C0C0; font-size: 25px"></span>Enter your payment details</h3>
 			
 			<ng-form name="ccNumberForm">
 			<div class="col-md-12" style="margin: 10px;">

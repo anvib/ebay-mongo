@@ -2,6 +2,7 @@
   "name": "EBay",
   "version": "0.0.1",
   "private": true,
+  "main": "server.js",
   "scripts": {
     "start": "node app.js"
   },

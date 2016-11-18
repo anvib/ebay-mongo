@@ -1,4 +1,8 @@
-var mysql = require('./mysql');
+var mongo = require("./mongo");
+var mongoURL = "mongodb://localhost:27017/ebay";
+
+var dateformat = require('dateformat');
+
 var winston_logger = require('winston')
 
 exports.bid_job = {
@@ -11,151 +15,192 @@ exports.bid_job = {
     },
     job: function () {
 
-        
-        var findExpireBids = "Select item_code, bid_endtime from items where bid_endtime < now() and bid_status = 0";
-       // console.log(findExpireBids);
-        
-        mysql.fetchData(function(err,expiryBids){
-			if(err){
-				throw err;
-			}
-			else{
-				if(expiryBids.length > 0)
-				{
-					var str = JSON.stringify(expiryBids);
-					var expiredBids = JSON.parse(str);
-					
-					winston_logger.log('info', 'Bidding completed for item '+expiredBids[i].item_code);
-					
-					for(i in expiredBids){
-						var getBids = "Select bidding.*, items.seller_username from bidding inner join items on items.item_code = bidding.item_code where bidding.item_code="+expiredBids[i].item_code;
-						//console.log(getBids);
-						
-						 mysql.fetchData(function(err,bids){
-								if(err){
-									throw err;
-								}
-								else{
-									if(bids.length > 0){
-										var bidstr = JSON.stringify(bids);
-										var bidscheck = JSON.parse(bidstr);
-										
-										console.log("bids are");
-										var maxBid = 0;
-										var winningBidUser = null;
-										
-										for(j in bids){
-											if(bids[j].bid_amount > maxBid){
-												maxBid = bids[j].bid_amount;
-												winningBidUser = bids[j].bid_username;
-											}
-										}
-										
-										var seller = bids[0].seller_username;
-										
-										var orderid;
-										var getMaxOrder = "select max(order_id) as order_id from orders";
-										console.log(getMaxOrder)
-										
-										mysql.fetchData(function(err,maxorders){
-											if(err){
-												throw err;
-											}
-											else{
-												if(maxorders[0].order_id == null)
-													orderid = 0;
-												else
-													orderid = (maxorders[0].order_id) + 1;
-												
-												var currentDate = new Date();
-												
-												var post  = {order_id: orderid, item_code: expiredBids[i].item_code, quantity: 1, seller_username: seller, buyer_username: winningBidUser, orderdate: currentDate, bid: 1, price: maxBid};
-												var table = 'orders';
-												
-												mysql.insertRecord(function(err,results){
-													
-													if(err){
-														throw err;
-													}
-													else
-													{
-														console.log("bid order successfull");
-														
-														//update bidding table to notify that bidding completed
-														var updateBidding = "Update bidding set sold = 1 where item_code = "+expiredBids[i].item_code;
-													 	console.log(updateBidding)
-													 	
-													 	mysql.updateData(function(err,results){
-													 		
-														if(err){
-															throw err;
-														}
-														else{
-														}  },updateBidding);
-													 	
-													 	//update bidding table to notify that bidding completed
-														var updateBidding = "Update bidding set sold = 2 where item_code = "+expiredBids[i].item_code+" and bid_amount = "+maxBid;
-													 	console.log(updateBidding)
-														
-													 	mysql.updateData(function(err,results){
-													 		
-														if(err){
-															throw err;
-														}
-														else{
-														}  },updateBidding);
-													 	
-													 	//update account for buyer
-													 	var updateBuyer = "Update users set account = account - "+maxBid+" where username = '"+winningBidUser+"'";
-													 	console.log(updateBuyer)
-													 	
-													 	mysql.updateData(function(err,results){
-													 		
-														if(err){
-															throw err;
-														}
-														else{
-														}  },updateBuyer); 
-													 	
-													 	//update account for seller
-													 	var updateSeller = "Update users set account = account + "+maxBid+" where username = '"+seller+"'";
-													 	console.log(updateSeller);
-													 	
-													 	mysql.updateData(function(err,results){
-													 		
-														if(err){
-															throw err;
-														}
-														else{
-														}  },updateSeller);
-													 	
-													 	//update bid status in items
-													 	var updateItemStatus = "Update items set bid_status = 1 where item_code = "+expiredBids[i].item_code;
-													 	console.log(updateItemStatus);
-													 	
-													 	mysql.updateData(function(err,results){
-													 		
-														if(err){
-															throw err;
-														}
-														else{
-														}  },updateItemStatus);
-													 		
-													} 
-													
-											},post,table);
-											}
-										},getMaxOrder);
-										
-									}else{
-										console.log("no bids on expired auction")
+		console.log("checking bids")
+
+		mongo.connect(mongoURL, function() {
+
+			var coll_items = mongo.collection('items');
+			var coll_users = mongo.collection('users');
+
+			var currentDate = new Date();
+			var checkDate = dateformat(currentDate,"yyyy-mm-dd HH:MM:ss");
+
+			coll_items.find( { $and: [ { bid_status: 0  } ,{bid_endtime:  { $lt: checkDate }}]  }).toArray(function(err, items) {
+
+					if(items.length > 0){
+
+						winston_logger.log('info', 'Bidding completed for items '+items.length);
+
+						for(i in items){
+							if(items[i].bids.length > 0){
+
+								var maxBid = 0;
+								var winningBidUser = null;
+
+								var bids = items[i].bids;
+								for(j in bids){
+									if(Number(bids[j].bid_amount) > Number(maxBid)){
+										maxBid = Number(bids[j].bid_amount);
+										winningBidUser = bids[j].bid_username;
 									}
 								}
-						 },getBids);
+
+								var seller = items[0].seller_username;
+								var item_code = items[0].item_code;
+
+								coll_users.find({username:seller}).toArray(function(err, results) {
+
+									//get order id to insert
+									var user = results[0];
+									var orderid;
+									var maxOrderId = 1;
+
+									if(user.orders.length > 0){
+										for(i in user.orders){
+											if(Number(user.orders[i].orderid) > maxOrderId)
+												maxOrderId = Number(user.orders[i].orderid);
+										}
+										orderid = maxOrderId + 1;
+									}else{
+										orderid = 1;
+									}
+
+									//create a new order
+									var currentDate = new Date();
+									var orderdate = dateformat(currentDate,"yyyy-mm-dd HH:MM:ss");
+									var orders = [];
+
+									for(x in user.orders){
+										orders.push(user.orders[x])
+									}
+
+									json = {
+										"orderid":orderid,
+										"item_code":item_code,
+										"orderdate":orderdate,
+										"seller_username":seller,
+										"buyer_username":winningBidUser,
+										"quantity":1,
+										"bid":1,
+										"price":maxBid
+									}
+
+									orders.push(json);
+
+									coll_users.update(
+										{
+											username: winningBidUser
+										},
+										{
+											$set: {
+												orders : orders
+											}
+										}), function(err, user){
+										if(err) {
+											throw err;
+										} else {
+											//new order placed successfully
+											console.log("new order added")
+										}
+									};
+
+									//update biddetails in item
+									console.log("bids update")
+									console.log(bids)
+									for(i in bids){
+										if(Number(bids[i].bid_amount) == Number(maxBid)){
+											bids[i].sold = 2;
+										}else{
+											bids[i].sold = 1;
+										}
+									}
+
+									console.log("new bids")
+									console.log(bids)
+
+									coll_items.update(
+										{
+											item_code: item_code
+										},
+										{
+											$set: {
+												bids : bids
+											}
+										}), function(err, user){
+										if(err) {
+											throw err;
+										} else {
+											//new order placed successfully
+											console.log("new order added")
+										}
+									};
+
+									//update account for buyer
+									coll_users.update(
+										{
+											username: winningBidUser
+										},
+										{
+											$inc: {
+												account : Number(0) - Number(maxBid)
+											}
+										})
+
+									console.log("buyer account updated")
+
+									//update account for seller
+									coll_users.update(
+										{
+											username: seller
+										},
+										{
+											$inc: {
+												account : Number(maxBid)
+											}
+										})
+
+									console.log("seller account updated")
+
+									//update bid status in items
+									coll_items.update(
+										{
+											item_code: item_code
+										},
+										{
+											$inc: {
+												bid_status: 1
+											}
+										})
+
+									console.log("bid status updated")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+								});
+
+
+							}
+						}
+
+
+					}else{
+
 					}
-				}
-			}
-        }, findExpireBids); 
+				});
+
+		});
+
     },
     spawn: true             
 }

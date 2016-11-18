@@ -12,16 +12,50 @@
     	<script src="angularjs/user.js"></script>
   </head>
   
-<body ng-app="user" ng-controller="sellForm" style="background-color:#f5f5f5;">
+<body ng-app="user" ng-controller="sellForm">
+ 	
+ 	<div class="row" style="margin: 10px;">
+	<div class="btn-group">
+		<div class="btn-group">
+  			<button type="button" class="btn btn-default">Hi <b><%- firstname %></b>!</button>
+ 			<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+   				<span class="caret"></span>
+  			</button>
+  			<ul class="dropdown-menu" role="menu">
+	    		<li><a href="/myAccount">Account Settings</a></li>
+	    		<li><a href="/logout">Sign Out</a></li>
+  			</ul>
+		</div> <!-- button group 1 -->
+		<button type="button"class="btn btn-default" onclick="window.location.href='/sell'">Sell</button>
+ 	</div><!-- button group 2 -->
+	
+		<div class="btn-group pull-right" style="width:150px">
+			<button type="button"class="btn btn-default" onclick="window.location.href='/summary'">My eBay</button>
+			<button type="button"class="btn btn-default" onclick="window.location.href='/cart'">
+			
+			<span class="glyphicon glyphicon-shopping-cart" style="color:  #FFFFF; font-size: 15px"><span class="badge" style="color: #ffffff; background-color: #e69500; font-size: 10px"><%- cart%></span></span>
+			
+			</button>
+		
+		</div><!-- button group pull right -->
+
+</div><!-- row -->
+ 	
  	
  	<div class="logo" style="margin-left: 120px;"> 
  		<img src="https://pbs.twimg.com/profile_images/698397813672058881/vpt3vjf3.jpg" width="160px" height="145px">
  	</div>
  
+ <div ng-show="warn">
+ 	<div class="alert alert-warning">
+  		<strong>Warning!</strong> Please fill in all required fields.
+	</div>
+ </div>
+ 
  	<div class="col-md-1">
  	</div>
  
-	<div class="col-md-8 well" style="text-align:left; background-color: #FFFFFF;">
+	<div class="col-md-8 well" style="text-align:left; background-color: #f5f5f5;">
 		<div class="row">
 		<font size="4">Describe your item</font>
 	
@@ -161,8 +195,7 @@
 	<div class="col-md-12" style="margin: 10px;">
 		<button ng-click="btn_sellItem();">Submit</button>
 	</div>
-	
-		
+			
 
 </div>
   </body>

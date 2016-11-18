@@ -21,6 +21,7 @@ user.controller('signin',function($scope,$http){
 				$scope.login = true;
 			}else if(data.statuscode==200){
 				window.location.assign("/homepage");
+				//window.location.assign("/trial");
 				console.log("In angular: User found");
 			}else{
 				console.log("In angular: unknown case")
@@ -101,7 +102,7 @@ user.controller('cart',function($scope,$http){
 	
 	$scope.viewItem=function(data){
 		$scope.item_code = data;
-		
+		console.log("open item "+$scope.item_code)
 		$http({
 			method: "POST",
 			url: '/itemDetails',
@@ -200,14 +201,15 @@ user.controller('cart',function($scope,$http){
 	}
 	
 	$scope.removeCart=function(data){
-		$scope.cart_id = data;
-		console.log("Cart id to be deleted is ",$scope.cart_id)
+		console.log("data received from cart ejs to remove is "+data)
+		$scope.cart_item = data;
+		console.log("Cart item to be deleted is ",$scope.cart_item)
 		
 		$http({
 			method: "POST",
 			url: '/removeCart',
 			data:{
-				"cart_id" : $scope.cart_id
+				"cart_id" : data
 			}
 		}).success(function(data){
 			if(data.statuscode==200)
@@ -301,7 +303,15 @@ user.controller('sellForm',function($scope,$http){
 		}
 	}
 	
+	$scope.warn = false;
+	
+	
 	$scope.btn_sellItem=function(){
+		
+		if(item_type == null && sell_type == null && $scope.fixed_quantity == null && $scope.seller_state == null){
+			$scope.warn = true;
+		}else{
+		
 		var item_type = localStorage.getItem('type');
 		var sell_type = localStorage.getItem('sell_type');
 		var price;
@@ -347,6 +357,7 @@ user.controller('sellForm',function($scope,$http){
 			console.log("In angular - error to process request");
 		});	
 	}
+	}
 })
 
 
@@ -374,6 +385,7 @@ user.controller('payment',function($scope,$http){
 	
 	$scope.year = {
 			options:[
+			{id: 'y2000', name: '2020'},
 			{id: 'y2000', name: '2000'},
 			{id: 'y1999', name: '1999'},
 			{id: 'y1998', name: '1998'},
@@ -454,7 +466,12 @@ user.controller('signup',function($scope,$http){
 
 	
 	$scope.emailmatch = false;
-	$scope.enterpassword = false;
+	$scope.enterpass = false;
+	$scope.email1error = false;
+	$scope.reemailerror = false;
+	$scope.firstnameerror = false;
+	$scope.lastnameerror = false;
+	
 	$scope.btn_signup=function(){
 		
 		
@@ -465,51 +482,63 @@ user.controller('signup',function($scope,$http){
 		var email1 = $scope.email;
 		var email2 = $scope.email2;
 		
-		if(email1 != email2)
-			$scope.emailmatch = true;
-		else
-			$scope.emailmatch = false;
-		
-		if(password == null)
-			$scope.enterpassword = true;
-		else
-			$scope.enterpassword = false;
-		
-		$scope.enterpassword = function(){
+		if($scope.firstname == null && $scope.lastname == null && $scope.password == null && $scope.mobile == null && $scope.email == null && $scope.email2 == null)
+		{
 			$scope.enterpass = true;
-			$scope.passrules = true;
+			$scope.email1error = true;
+			$scope.reemailerror = true;
+			$scope.firstnameerror = true;
+			$scope.lastnameerror = true;
+		}else{
+
+			if(email1 != email2)
+				$scope.emailmatch = true;
+			else
+				$scope.emailmatch = false;
+			
+			if(password == null)
+				$scope.enterpassword = true;
+			else
+				$scope.enterpassword = false;
+			
+			$scope.enterpassword = function(){
+				$scope.enterpass = true;
+				$scope.passrules = true;
+			}
+			
+			$http({
+				method: "POST",
+				url: '/submitSignUp',
+				data:{
+					"firstname" : $scope.firstname,
+					"lastname" : $scope.lastname,
+					"password" : $scope.password,
+					"email" : $scope.email,
+					"email2" : $scope.email2,
+					"mobile" : $scope.mobile
+				}
+			}).success(function(data){
+				if(data.statuscode == 200)
+				{
+					$scope.emailmatch = false;
+					console.log(" I am here in angular success and username is",data.username);
+					window.location.assign("/signupsuccess");
+				}
+				else if(data.statuscode == 300)
+				{
+					$scope.emailmatch = true;
+				}else if(data.statuscode == 401){
+					$scope.emailexists = true;
+				}
+				else
+				{
+					$scope.emailmatch = false;
+				}
+			}).error(function(error){
+				console.log("In angular - error to add user");
+			});
 		}
 		
-		
-		
-		$http({
-			method: "POST",
-			url: '/submitSignUp',
-			data:{
-				"firstname" : $scope.firstname,
-				"lastname" : $scope.lastname,
-				"password" : $scope.password,
-				"email" : $scope.email,
-				"email2" : $scope.email2,
-				"mobile" : $scope.mobile
-			}
-		}).success(function(data){
-			if(data.statuscode == 200)
-			{
-				$scope.emailmatch = false;
-				console.log(" I am here in angular success and username is",data.username);
-				window.location.assign("/signupsuccess");
-			}
-			else if(data.statuscode == 300)
-			{
-				$scope.emailmatch = true;
-			}
-			else
-			{
-				$scope.emailmatch = false;
-			}
-		}).error(function(error){
-			console.log("In angular - error to add user");
-		});
+	
 	}
 })

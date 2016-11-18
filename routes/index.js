@@ -1,5 +1,5 @@
 var ejs = require('ejs');
-var mysql = require('./mysql');
+//var mysql = require('./mysql');
 
 exports.index = function(req, res){
 	  //  res.render('index', { title: 'Welcome to Anvita\'s eBay'});

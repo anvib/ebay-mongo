@@ -32,6 +32,19 @@ div.column {
 
 <body ng-app="user" ng-controller="cart">
 
+<div class="row" style="margin: 10px;">
+	<div class="btn-group pull-right" style="width:150px">
+	<button type="button"class="btn btn-default" onclick="window.location.href='/summary'">My eBay</button>
+	<button type="button"class="btn btn-default" onclick="window.location.href='/cart'">
+			
+	<span class="glyphicon glyphicon-shopping-cart" style="color:  #FFFFF; font-size: 15px"><span class="badge" style="color: #ffffff; background-color: #e69500; font-size: 10px"><%- cart%></span></span>
+			
+	</button>
+		
+		</div><!-- button group pull right -->
+
+</div><!-- row -->
+
 <div class="container">
 	<div class="logo"> 
  		<img src="https://pbs.twimg.com/profile_images/698397813672058881/vpt3vjf3.jpg" width="180px" height="165px">

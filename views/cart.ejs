@@ -43,7 +43,7 @@
 		</div> <!-- button group 1 -->
 		<button type="button"class="btn btn-default" onclick="window.location.href='/sell'">Sell</button>
  	</div><!-- button group 2 -->
-	Last sign in <%- lastlogin %>
+	&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Last sign in <%- lastlogin %>
 	
 	
 	
@@ -93,35 +93,45 @@
 			      	<img src="<%= cartItems[i].image %> " style="width:150px;height:150px" />
 		</div><!-- col md 4 -->
         <div class="col-md-8">
-        	<div class="row"><Strong>Item Code : </Strong><%- cartItems[i].item_code %></div>
-			<div class="row"><Strong>Item Description : </Strong><%- cartItems[i].description %> </div>
-			<div class="row"><Strong>Item Price : </Strong><%- cartItems[i].price %> </div>
-			<div class="row"><Strong>Available Quantity : </Strong><%- cartItems[i].available %></div>
-			<div class="row"><Strong>Item Quantity : </Strong><%- cartItems[i].quantity %>
-			<a id = "change" onclick = "change('<%- cartItems[i].item_code %>')">Change</a>
+        	<div class="row"><a><font size= "4"><Strong><%- cartItems[i].description %></Strong></font></a></div>
+			<div class="row" style="color:red"><div class="col-md-4 col-md-offset-6"><font size= "4"><Strong><%- cartItems[i].price %>$</font></Strong></div></div>
+			<br>
+			<div class="row">
+				<div class="col-md-6">
+					Quantity: <%- cartItems[i].quantity %>
+							<a id = "change" onclick = "change('<%- cartItems[i].item_code %>')">Change</a>
 
 
 <l class="collapse" id="<%- cartItems[i].item_code %>" style="list-style-type:none">
-  <li><input type="text" size="2" ng-model="newqty" ng-init="quantity='1'" ng-init="newqty > 1"></li>
+  <li><span ng-if="newqty > <%- cartItems[i].available %>" class="animate-if">
+					<span class="glyphicon glyphicon-circle-arrow-right" style="color:red; font-size: 18px"></span>
+				</span><input type="text" size="2" ng-model="newqty" ng-init="quantity='1'" ng-init="newqty > 1"></li>
       		<div class="row">
 				<span ng-if="newqty > <%- cartItems[i].available %>" class="animate-if">
 					<span style="color:red">Please enter a lower number</span>
 				</span>
 			</div>
 	<li><a ng-click="updateCartQty('<%- cartItems[i].item_code %>');">Update</a></li>
-</l>			
+</l>	
+				</div>
+				<%- cartItems[i].available %> available
+			
 			</div>
-	
-	
-
-  
-  
-			<div class="row"><Strong>Seller : </Strong><%- cartItems[i].seller_username %> </div>
-  			<div class="row"><Strong>Seller : </Strong><%- cartItems[i].seller_username %> </div>
-  			<div class="row"><Strong>Cart id : </Strong><%- cartItems[i].cart_id %> </div>
+		<br>		
+		<div class="row">
+			Sold by: <a><%- cartItems[i].seller_username %></a>
+		</div>
+  		<br>
+  			<div class="row"><font color="#808080">Standard Shipping (6 business days)</font></div>
+  		
+  		<div class="row">
+  			<div class="col-md-4-col-md-offset-6">	
   			<div class="btn-group pull-right" style="width:150px">
-				<button ng-click="removeCart('<%- cartItems[i].cart_id %>');" type="button" class="btn btn-default">Remove</button>
+				<button ng-click="removeCart('<%- cartItems[i].item_code %>');" type="button" class="btn btn-default">Remove</button>
 			</div>
+			</div>
+		</div>	
+			
 	   	</div>
 	   </div>	
 
